@@ -74,6 +74,22 @@ Storage.prototype.loadOptions = function () {
 		options.privateSeed = generateGuid ();
 		dirty = true;
 	}
+	// This value is not secret.
+	if (null == options.salt) {
+		options.salt = generateGuid ();
+		dirty = true;
+	}
+	if (null == options.seeds) {
+		options.seeds = {};
+		dirty = true;
+	}
+	var seedDigest = hex_hmac_sha1(
+		options.salt,
+		options.privateSeed).substring(0,7);
+	if (null == options.seeds[seedDigest]) {
+		options.seeds[seedDigest] = options.privateSeed;
+		dirty = true;
+	}
 	if (null == options.defaultLength) {
 		options.defaultLength = default_length;
 		dirty = true;
@@ -163,7 +179,9 @@ Storage.prototype.loadConfig = function (url) {
 
 	if (null == config.policy) {
 		config.policy = new Object ();
-		config.policy.seed = config.options.privateSeed;
+		config.policy.seedRef = hex_hmac_sha1(
+			config.options.salt,
+			config.options.privateSeed).substring(0,7);
 		config.policy.length = config.options.defaultLength;
 		config.policy.strength = config.options.defaultStrength;
 	}
@@ -185,6 +203,26 @@ Storage.prototype.migrate = function () {
 	this.runMigration (3, this.migrate_v3);
 	this.runMigration (4, this.migrate_v4);
 	this.runMigration (5, this.migrate_v5);
+	this.runMigration (6, this.migrate_v6);
+}
+
+Storage.prototype.migrate_v6 = function () {
+	var keys = toArray (localStorage);
+	var options = localStorage.loadOptions();
+	for (var i = 0; i < keys.length; ++i) {
+		var key = keys[i];
+		if (key.startsWith ("tag:")) {
+			var value = localStorage.getObject (key);
+			if (value.seed) {
+				console.log("Strubbing secret for " + value.tag);
+				value.seedRef = hex_hmac_sha1(
+					options.salt,
+					value.seed).substring(0,7);
+				delete value.seed;
+				localStorage.setObject (key, value);
+			}
+		}
+	}
 }
 
 Storage.prototype.migrate_v5 = function () {

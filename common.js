@@ -72,9 +72,16 @@ function generateGuid () {
 function generateHash (config, input) {
 	var tag = config.tag;
 
-	if (false == config.options.compatibilityMode && null != config.policy.seed) {
+	var seed = config.policy.seed;
+	if (!seed) {
+		var seedRef = config.policy.seedRef;
+		if (seedRef) {
+			seed = config.options.seeds[seedRef];
+		}
+	}
+	if (false == config.options.compatibilityMode && null != seed) {
 		tag = PassHashCommon.generateHashWord (
-			config.policy.seed,
+			seed,
 			tag,
 			24,
 			true, // require digits
