@@ -35,30 +35,123 @@
  * ***** END LICENSE BLOCK ***** */
 -->
 
-Storage.prototype.setObject = function (key, value) {
+storage = {}
+
+// This is meant to wrap localStorage with an interface that acts
+// close enough to chrome.storage that it can be used as a replacement
+// for it in this code.
+storage.LOCAL = (function() {
+	var get = function(keys, callback) {
+		items = {};
+		if (keys === null) {
+			keys = Object.keys (localStorage);
+		}
+		if (typeof keys === "string") {
+			items[keys] = localStorage.getItem(keys);
+		} else if (keys instanceof Array) {
+			for (var i=0; i < keys.length; i++) {
+				var key = keys[i];
+				if (typeof key !== "string") {
+					throw "key is not a string.";
+				}
+				items[key] = localStorage.getItem(key);
+			}
+		} else {
+			// TODO This method doesn't handle an object passed as
+			// keys as specified in the chrome.storage api
+			throw "keys is not a string or an array.";
+		}
+		callback(items);
+	}
+	var set = function(items, callback) {
+		for (var key in items) {
+			var item = items[key];
+			if (items.hasOwnProperty(key)) {
+				localStorage.setItem(key, item);
+			}
+		}
+
+		if (callback) { callback(); }
+	}
+	var remove = function(keys, callback) {
+		if (typeof keys === "string") {
+			localStorage.removeItem(keys);
+		} else if (keys instanceof Array) {
+			for (var i=0; i < keys.length; i++) {
+				var key = keys[i];
+				if (typeof key !== "string") {
+					throw "key is not a string.";
+				}
+				localStorage.removeItem(key);
+			}
+		} else {
+			throw "keys is not a string or an array.";
+		}
+		if (callback) { callback(); }
+	}
+	var clear = function(callback) {
+		localStorage.clear();
+		if (callback) { callback(); }
+	}
+	return {
+		get: get
+	,	set: set
+	,	remove: remove
+	,	clear: clear
+	}
+})()
+
+// For now, use local storage.
+storage.RAW = storage.LOCAL;
+
+storage.setObject = function (key, value, callback) {
 	var str = JSON.stringify (value);
 	if (debug) console.log ("Set " + key + " " + str);
-	this.setItem (key, str);
+	items = {};
+	items[key] = str;
+	this.RAW.set (items, callback);
 }
 
-Storage.prototype.getObject = function (key) {
-	var str = this.getItem (key);
+storage.setObjects = function (items, callback) {
+	objects = {};
+	for (key in items) {
+		var str = JSON.stringify (items[key]);
+		if (debug) console.log ("Set " + key + " " + str);
+		objects[key] = str;
+	}
+	this.RAW.set (objects, callback);
+}
+
+storage.getObject = function (key, callback) {
+this.RAW.get (key, function(items) {
+	var str = items[key];
 	if (null == str) {
 		if (debug) console.log ("Get " + key + " null");
-		return null;
+		callback (null);
+		return;
 	}
 	if (debug) console.log ("Get " + key + " " + str);
-	return JSON.parse (str);
+	callback(JSON.parse (str));
+});
 }
 
-Storage.prototype.getBoolean = function (key) {
-	if ("true" == localStorage[key]) {
-		return true;
-	}
-	return false;
+storage.getObjects = function (keys, callback) {
+	this.RAW.get (keys, function(items) {
+		for(var key in items) {
+			var str = items[key];
+			if (null == str) {
+				if (debug) console.log ("Get " + key + " null");
+				items[key] = null;
+			} else {
+				if (debug) console.log ("Get " + key + " " + str);
+				items[key] = JSON.parse (str);
+			}
+		}
+		callback(items);
+	});
 }
 
-Storage.prototype.addDefaultOptions = function(options) {
+storage.addDefaultOptions = function(options, callback) {
 	var dirty = false;
 	if (null == options) {
 		options = new Object ();
@@ -101,55 +194,65 @@ Storage.prototype.addDefaultOptions = function(options) {
 		dirty = true;
 	}
 	if (dirty) {
-		this.saveOptions (options);
+		this.saveOptions (options, function() {
+			callback(options);
+		});
+	} else {
+		callback (options);
 	}
 }
 
-Storage.prototype.saveOptions = function (options) {
-	this.addDefaultOptions(options);
-	localStorage.setObject ("options", options);
+storage.saveOptions = function (options, callback) {
+	var self = this;
+	self.addDefaultOptions(options, function() {
+		self.setObject ("options", options, callback);
+	});
 }
 
-Storage.prototype.loadOptions = function () {
-	var options;
-	options = localStorage.getObject ("options");
-	this.addDefaultOptions(options);
-	return options;
+storage.loadOptions = function (callback) {
+	var self = this;
+	self.getObject ("options", function(options) {
+		self.addDefaultOptions(options, callback);
+	});
 }
 
-Storage.prototype.saveConfig = function (url, config) {
+storage.saveConfig = function (url, config, callback) {
 	if (debug) console.log ("Saving " + url + " " + JSON.stringify (config));
 	config.fields = toArray (config.fields);
-
-	localStorage.setObject ("tag:" + config.tag, config.policy);
 
 	var options = config.options;
 	var policy = config.policy;
 	delete config.policy;
 	delete config.options;
 
-	localStorage.setObject ("url:" + url, config);
+	var tag = "tag:" + config.tag;
+	var url = "url:" + url;
+	items = {}
+	items[tag] = policy;
+	items[url] = config;
+	this.setObjects(items, function() {
 	config.policy = policy;
 	config.options = options;
+	if (callback) callback();
+	});
 }
 
-Storage.prototype.loadTags = function () {
-	var tags = [];
-	var keys = toArray (localStorage);
-	for (var i = 0; i < keys.length; ++i) {
-		var key = keys[i];
-		if (key.startsWith ("tag:")) {
-			tags[tags.length] = key.substringAfter ("tag:");
+storage.loadTags = function (callback) {
+	this.RAW.get(null, function(items) {
+		var tags = []
+		for (var key in items) {
+			if (key.startsWith ("tag:")) {
+				tags.push (key.substringAfter ("tag:"));
+			}
 		}
-	}
-	return tags;
+		callback(tags);
+	});
 }
 
-Storage.prototype.isTagReferenced = function (keys, tag) {
-	for (var i = 0; i < keys.length; ++i) {
-		var key = keys[i];
+storage.isTagReferenced = function (items, tag) {
+	for (var key in items) {
 		if (key.startsWith ("url:")) {
-			var config = localStorage.getObject (key);
+			var config = items[key];
 			if (config.tag == tag) {
 				return true;
 			}
@@ -158,84 +261,149 @@ Storage.prototype.isTagReferenced = function (keys, tag) {
 	return false;
 }
 
-Storage.prototype.collectGarbage = function () {
+storage.collectGarbage = function (callback) {
 	// remove unreferenced tags
-	var keys = toArray (localStorage);
-	for (var i = 0; i < keys.length; ++i) {
-		var key = keys[i];
+	var self = this;
+	self.getObjects(null, function(items) {
+	var del_keys = [];
+	for (var key in items) {
 		if (key.startsWith ("tag:")) {
-			if (!this.isTagReferenced (keys, key.substringAfter ("tag:"))) {
-				delete localStorage[key];
+			if (!self.isTagReferenced (items, key.substringAfter ("tag:"))) {
+				del_keys.push(key);
 			}
 		}
 	}
+	self.RAW.remove(del_keys, callback);
+	});
 }
 
-Storage.prototype.loadConfig = function (url) {
-	var config = localStorage.getObject ("url:" + url);
+storage.loadConfig = function (url, callback) {
+	var self = this;
+	self.getObject ("url:" + url, function(config) {
 	if (null == config) {
 		config = new Object ();
 		config.tag = url;
 		config.fields = new Array ();
 	}
 
-	config.options = this.loadOptions ();
-	config.policy = localStorage.getObject ("tag:" + config.tag);
+	self.loadOptions (function(options) {
+	config.options = options;
+	self.getObject ("tag:" + config.tag, function(policy) {
+		config.policy = policy;
 
-	if (null == config.policy) {
-		config.policy = new Object ();
-		config.policy.seedRef = hex_hmac_sha1(
-			config.options.salt,
-			config.options.privateSeed).substring(0,7);
-		config.policy.length = config.options.defaultLength;
-		config.policy.strength = config.options.defaultStrength;
-	}
-
-	return config;
-}
-
-Storage.prototype.migrate = function () {
-	if (null == localStorage["version"]) {
-		if (null != localStorage["option:private_seed"]) {
-			// Migrate Password Hasher Plus Plus databases
-			localStorage["version"] = "1";
-		} else {
-			localStorage["version"] = "0";
-			this.runMigration (1, this.migrate_v1);
+		if (null == config.policy) {
+			config.policy = new Object ();
+			config.policy.seedRef = hex_hmac_sha1(
+				config.options.salt,
+				config.options.privateSeed).substring(0,7);
+			config.policy.length = config.options.defaultLength;
+			config.policy.strength = config.options.defaultStrength;
 		}
-	}
-	this.runMigration (2, this.migrate_v2);
-	this.runMigration (3, this.migrate_v3);
-	this.runMigration (4, this.migrate_v4);
-	this.runMigration (5, this.migrate_v5);
-	this.runMigration (6, this.migrate_v6);
+
+		callback (config);
+	});
+	});
+	});
 }
 
-Storage.prototype.migrate_v6 = function () {
-	var keys = toArray (localStorage);
-	var options = localStorage.loadOptions();
-	for (var i = 0; i < keys.length; ++i) {
-		var key = keys[i];
+storage.loadConfigs = function (callback) {
+	var self = this;
+	self.loadOptions (function(options) {
+		self.getObjects (null, function(objects) {
+			urls = {};
+			for (key in objects) {
+				if (key.startsWith ("url:")) {
+					config = objects[key];
+					config.options = options;
+					var tag = "tag:" + config.tag;
+					config.policy = objects[tag];
+
+					if (! config.policy) {
+						config.policy = new Object ();
+						config.policy.seedRef = hex_hmac_sha1(
+							config.options.salt,
+							config.options.privateSeed).substring(0,7);
+						config.policy.length = config.options.defaultLength;
+						config.policy.strength = config.options.defaultStrength;
+					}
+
+					var url = key.slice (4);
+					urls[url] = config;
+
+				}
+			}
+			callback (urls);
+		});
+	});
+}
+
+storage.migrate = function (callback) {
+	var self = this;
+	var migrate_v6 = function() {
+		self.runMigration (6, function(c) {self.migrate_v6(c)}, callback);
+	}
+	var migrate_v5 = function() {
+		self.runMigration (5, function(c) {self.migrate_v5(c)}, migrate_v6);
+	}
+	var migrate_v4 = function() {
+		self.runMigration (4, function(c) {self.migrate_v4(c)}, migrate_v5);
+	}
+	var migrate_v3 = function() {
+		self.runMigration (3, function(c) {self.migrate_v3(c)}, migrate_v4);
+	}
+	var migrate_v2 = function() {
+		self.runMigration (2, function(c) {self.migrate_v2(c)}, migrate_v3);
+	}
+	var migrate_v1 = function() {
+		self.runMigration (1, function(c) {self.migrate_v1(c)}, migrate_v2);
+	}
+
+	self.RAW.get("version", function(version) {
+		if (null == version) {
+			self.RAW.get("option:private_seed", function(private_seed) {
+				if (null != private_seed) {
+					// Migrate Password Hasher Plus Plus databases
+					self.RAW.set({"version": "1"}, migrate_v2);
+				} else {
+					self.RAW.set({"version": "0"}, migrate_v1);
+				}
+			})
+			return;
+		}
+		migrate_v2();
+	})
+}
+
+storage.migrate_v6 = function (callback) {
+	var self = this;
+	self.getObjects(null, function(items) {
+	self.loadOptions(function(options) {
+	var newitems = {};
+	for (var key in items) {
 		if (key.startsWith ("tag:")) {
-			var value = localStorage.getObject (key);
+			var value = items [key];
 			if (value.seed) {
 				console.log("Strubbing secret for " + value.tag);
 				value.seedRef = hex_hmac_sha1(
 					options.salt,
 					value.seed).substring(0,7);
 				delete value.seed;
-				localStorage.setObject (key, value);
+				newitems[key] = value;
 			}
 		}
 	}
+	self.setObjects(newitems, callback);
+	});
+	});
 }
 
-Storage.prototype.migrate_v5 = function () {
-	var keys = toArray (localStorage);
-	for (var i = 0; i < keys.length; ++i) {
-		var key = keys[i];
+storage.migrate_v5 = function (callback) {
+	var self = this;
+	self.getObjects(null, function(items) {
+	var newitems = {};
+	for (var key in items) {
 		if (key.startsWith ("url:")) {
-			var config = localStorage.getObject (key);
+			var config = items[key];
 			var tagName = config.tag;
 			var tag = new Object ();
 			tag.strength = config.strength;
@@ -244,27 +412,31 @@ Storage.prototype.migrate_v5 = function () {
 			delete config.strength;
 			delete config.length;
 			delete config.seed;
-			localStorage.setObject (key, config);
-			localStorage.setObject ("tag:" + tagName, tag);
+			newitems[key] = config;
+			newitems["tag:" + tagName] = tag;
 		}
 	}
+	self.setObjects(newitems, callback);
+	});
 }
-
-Storage.prototype.migrate_v4 = function () {
+storage.migrate_v4 = function (callback) {
+	var self = this;
+	self.RAW.get(null, function(items) {
 	var options = new Object ();
-	options.defaultLength = localStorage["option:default_length"];
-	options.defaultStrength = localStorage["option:default_strength"];
-	options.privateSeed = localStorage["option:private_seed"];
-	options.compatibilityMode = localStorage.getBoolean ("option:compatibility_mode");
-	options.backedUp = localStorage.getBoolean ("option:backed_up");
+	options.defaultLength = items["option:default_length"];
+	options.defaultStrength = items["option:default_strength"];
+	options.privateSeed = items["option:private_seed"];
+	options.compatibilityMode = ("true" === items["option:compatibility_mode"]);
+	options.backedUp = ("true" === items["option:backed_up"]);
 
-	var keys = toArray (localStorage);
-	for (var i = 0; i < keys.length; ++i) {
-		var key = keys[i];
+	self.getObjects(null, function(objects) {
+	var del_keys = [];
+	var update_objects = {};
+	for (var key in objects) {
 		if (key.startsWith ("option:")) {
-			delete localStorage[key];
+			del_items.push (key);
 		} else if (key.startsWith ("url:")) {
-			var config = localStorage.getObject (key);
+			var config = objects[key];
 			try {
 				if (config.tag.startsWith ("compatible:")) {
 					delete config.seed;
@@ -272,74 +444,99 @@ Storage.prototype.migrate_v4 = function () {
 				}
 				delete config.compatibilitymode;
 				delete config.backedup;
-				localStorage.setObject (key, config);
+				update_objects[key] = config;
 			} catch (e) {
 				console.log ("failed to migrate " + key);
 			}
 		}
 	}
 
-	localStorage.saveOptions (options);
+	self.RAW.remove(del_keys, function() {
+		self.setObjects(update_objects, function() {
+			self.saveOptions (options, callback)
+		});
+	});
+	});
+	});
 }
 
-Storage.prototype.migrate_v3 = function () {
-	var keys = toArray (localStorage);
-	for (var i = 0; i < keys.length; ++i) {
-		var key = keys[i];
+storage.migrate_v3 = function (callback) {
+	var self = this;
+	self.getObjects(null, function(objects) {
+	var set_objects = {};
+	for (var key in objects) {
 		if (!key.startsWith ("url:")) {
 			continue;
 		}
 		try {
-			var config = localStorage.getObject (key);
+			var config = objects[key];
 			var config2 = new Object ();
 			config2.tag = config.site;
 			for (var property in config) {
 				config2[property] = config[property];
 			}
 			delete config2.site;
-			localStorage.setObject (key, config2);
+			set_objects[key] = config2;
 		} catch (e) {
 			console.log ("failed to migrate " + key);
 		}
 	}
+	self.setObjects(set_objects, callback);
+	});
 }
 
-Storage.prototype.migrate_v2 = function () {
-	var keys = toArray (localStorage);
+storage.migrate_v2 = function (callback) {
+	var self = this;
+	self.RAW.get(null, function(items) {
+	var set_items = {};
+	var del_keys = [];
 	var reg = new RegExp ("^site:.*$");
-	for (var i = 0; i < keys.length; ++i) {
-		var key = keys[i];
+	for (var key in items) {
 		if (reg.test (key)) {
 			var to = "url";
-			localStorage[to + key.slice(4)] = localStorage[key];
-			delete localStorage[key];
+			set_items[to + key.slice(4)] = items[key];
+			del_keys.push(key);
 		}
 	}
+	self.RAW.remove(del_keys, function() {
+		self.RAW.set(set_items, callback);
+	});
+	});
 }
 
-Storage.prototype.migrate_v1 = function () {
-	var keys = toArray (localStorage);
+storage.migrate_v1 = function (callback) {
+	var self = this;
+	self.RAW.get(null, function(items) {
+	var set_items = {"version": "1"};
+	var del_keys = [];
 	var reg = new RegExp ("^compatibility_mode|default_length|default_strength|private_seed|backed_up$");
-	for (var i = 0; i < keys.length; ++i) {
-		var key = keys[i];
+	for (var key in items) {
 		var to = "site";
 		if ("version" == key) {
 			continue;
 		} else if (reg.test (key)) {
 			to = "option";
 		}
-		localStorage[to + ":" + key] = localStorage[key];
-		delete localStorage[key];
+		set_items[to + ":" + key] = items[key];
+		del_keys.push(key);
 	}
-	localStorage["version"] = "1";
+	self.RAW.remove(del_keys, function() {
+		self.RAW.set(set_items, callback);
+	});
+	});
 }
 
-Storage.prototype.runMigration = function (toVersion, func) {
-	var version = parseInt (localStorage["version"]);
+storage.runMigration = function (toVersion, func, callback) {
+	var self = this;
+	self.RAW.get("version", function(items) {
+	var version = parseInt (items["version"]);
 	if (toVersion <= version) {
+		if (callback) callback();
 		return;
 	}
 
-	func ();
-	localStorage["version"] = toVersion;
+	func (function() {
+		self.RAW.set({"version": toVersion}, callback);
+	});
+	});
 }

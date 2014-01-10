@@ -1,52 +1,68 @@
 
-localStorage.migrate ();
-
 var ports = {};
 
-function refreshTabs () {
+function refreshTabs (callback) {
 	var keys = toArray (ports);
-	for (var i = 0; i < keys.length; ++i) {
-		var key = keys[i];
+	var post = function(key) {
 		var port = ports[key];
 		if (debug) console.log ("Loading " + port.passhashUrl + " for " + key);
-		port.postMessage ({ update: loadConfig (port.passhashUrl) });
+		loadConfig (port.passhashUrl, function(config) {
+			port.postMessage ({ update: config });
+		});
 	}
+	for (var i = 0; i < keys.length; ++i) {
+		post(keys[i]);
+	}
+	if (callback) callback();
 }
 
-function loadOptions () {
-	return localStorage.loadOptions ();
+function loadOptions (callback) {
+	return storage.loadOptions (callback);
 }
 
-function saveOptions (options) {
-	localStorage.saveOptions (options);
-	refreshTabs ();
+function saveOptions (options, callback) {
+	storage.saveOptions (options, function() {
+		refreshTabs (callback);
+	});
 }
 
-function loadConfig (url) {
-	return localStorage.loadConfig (url);
+function getKeys (callback) {
+	storage.getKeys(callback);
 }
 
-function loadTags () {
-	return localStorage.loadTags ();
+function loadConfig (url, callback) {
+	return storage.loadConfig (url, callback);
 }
 
-function saveConfig (url, config) {
-	localStorage.saveConfig (url, config);
-	refreshTabs ();
+function loadConfigs (callback) {
+	return storage.loadConfigs (callback);
 }
+
+function loadTags (callback) {
+	return storage.loadTags (callback);
+}
+
+function saveConfig (url, config, callback) {
+	storage.saveConfig (url, config, function() {
+		refreshTabs (callback);
+	});
+}
+
+storage.migrate (function () {
 
 chrome.extension.onConnect.addListener (function (port) {
 	console.assert (port.name == "passhash");
 	port.onMessage.addListener (function (msg) {
 		if (null != msg.init) {
 			var url = grepUrl (msg.url);
-			var config = localStorage.loadConfig (url);
+			storage.loadConfig (url, function(config) {
 			port.passhashUrl = url;
 			ports[port.portId_] = port;
 			port.postMessage ({ init: true, update: config });
+			});
 		} else if (null != msg.save) {
 			var url = grepUrl (msg.url);
-			saveConfig (url, msg.save);
+			saveConfig (url, msg.save, function() {});
 		}
 	});
 
@@ -55,4 +71,6 @@ chrome.extension.onConnect.addListener (function (port) {
 			delete ports[port.portId_];
 		}
 	});
+});
+
 });

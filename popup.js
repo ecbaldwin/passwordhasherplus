@@ -18,8 +18,9 @@ function writeModel () {
 window.onunload = writeModel;
 
 function readModel () {
+	chrome.extension.getBackgroundPage ().loadTags (function(tags) {
 	$('#tag').val (config.tag);
-	$('#tag').autocomplete ({ source: chrome.extension.getBackgroundPage ().loadTags () });
+	$('#tag').autocomplete ({ source: tags });
 	$('#length').val (config.policy.length);
 	$('#strength').val (config.policy.strength);
 	if (true == config.options.compatibilityMode) {
@@ -32,13 +33,16 @@ function readModel () {
 		$('div#compatmodeheader').html ("<b>Warning:</b>");
 		$('div#compatmode').text ("You have not yet indicated that you have backed up your private key. Please do so on the Options page.");
 	}
+	});
 }
 
 chrome.tabs.getSelected (null, function (tab) {
 	url = chrome.extension.getBackgroundPage ().grepUrl (tab.url);
-	config = chrome.extension.getBackgroundPage ().loadConfig (url);
+	chrome.extension.getBackgroundPage ().loadConfig (url, function(c) {
+    config = c;
 	config.fields = toSet (config.fields);
 	readModel ();
+	});
 });
 
 $('#bump').click (function () {

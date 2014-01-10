@@ -9,17 +9,12 @@ if (typeof String.prototype.startsWith != 'function') {
 }
 
 if (typeof chrome != "undefined" && chrome.extension) {
-	urls = {};
-	options = chrome.extension.getBackgroundPage ().loadOptions ();
-	
-	for (var i = 0; i < localStorage.length; ++i) {
-		var key = localStorage.key (i);
-		if (key.startsWith ("url:")) {
-			var url = key.slice (4);
-			var config = chrome.extension.getBackgroundPage ().loadConfig (url);
-			urls[url] = config;
-		}
-	}
+	chrome.extension.getBackgroundPage ().loadOptions (function(o) {
+	// Set the global options
+	options = o;
+	chrome.extension.getBackgroundPage ().loadConfigs (function(u) {
+	// Set the global urls
+	urls = u;
 
 	$.each (urls, function (key, value) {
 		$("#urls").append ($("<option></option>").attr("value", key).text (value.tag));
@@ -30,6 +25,8 @@ if (typeof chrome != "undefined" && chrome.extension) {
 	}
 
 	$("#urls option").sort (sortAlpha).appendTo ("#urls");
+	});
+	});
 }
 
 
