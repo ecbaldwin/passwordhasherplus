@@ -58,14 +58,8 @@ Storage.prototype.getBoolean = function (key) {
 	return false;
 }
 
-Storage.prototype.saveOptions = function (options) {
-	localStorage.setObject ("options", options);
-}
-
-Storage.prototype.loadOptions = function () {
+Storage.prototype.addDefaultOptions = function(options) {
 	var dirty = false;
-	var options;
-	options = localStorage.getObject ("options");
 	if (null == options) {
 		options = new Object ();
 		dirty = true;
@@ -109,6 +103,17 @@ Storage.prototype.loadOptions = function () {
 	if (dirty) {
 		this.saveOptions (options);
 	}
+}
+
+Storage.prototype.saveOptions = function (options) {
+	this.addDefaultOptions(options);
+	localStorage.setObject ("options", options);
+}
+
+Storage.prototype.loadOptions = function () {
+	var options;
+	options = localStorage.getObject ("options");
+	this.addDefaultOptions(options);
 	return options;
 }
 
