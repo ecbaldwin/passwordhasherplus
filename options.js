@@ -5,7 +5,7 @@ function setNewGuid () {
 }
 
 function saveOptions () {
-	var options = new Object ();
+	var options = localStorage.loadOptions ();
 	options.defaultLength = document.getElementById ("length").value;
 	options.defaultStrength = document.getElementById ("strength").value;
 	options.compatibilityMode = document.getElementById ("compatibility").checked;
