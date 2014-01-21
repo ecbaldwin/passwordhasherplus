@@ -101,8 +101,83 @@ storage.LOCAL = (function() {
 	}
 })()
 
-// For now, use local storage.
-storage.RAW = storage.LOCAL;
+storage.REMOTE = storage.LOCAL;
+
+// Stores secrets locally and other data remotely.  Allows the rest of
+// the application to continue operating as if there is only one store.
+storage.HYBRID = (function(local, remote) {
+	var LOCAL = local;
+	var REMOTE = remote;
+	var localKeys = {"version":true, "options":true};
+	var divideKeys = function(keys) {
+		if (keys === null) {
+			return {"local": null, "remote": null};
+		} else if (typeof keys === "string") {
+			if (localKeys[keys]) {
+				return {"local":[keys], "remote":[]}
+			} else {
+				return {"local":[], "remote":[keys]}
+			}
+		} else if (keys instanceof Array) {
+			var local = [];
+			var remote = [];
+			for (var i = 0; i < keys.length; ++i) {
+				key = keys[i];
+				if (localKeys[key]) {
+					local.push(key);
+				} else {
+					remote.push(key);
+				}
+			}
+			return {"local":local, "remote":remote}
+		} else {
+			throw "Unhandled type for keys";
+		}
+	}
+	var get = function(keys, callback) {
+		var k = divideKeys(keys);
+		LOCAL.get(k["local"], function(local) {
+			REMOTE.get(k["remote"], function(items) {
+				for (var key in local) { items[key] = local[key]; }
+
+				callback(items);
+			});
+		})
+	}
+	var set = function(items, callback) {
+		var k = divideKeys(Object.keys(items));
+		var localKeys = k["local"];
+		var local = {};
+		for (var i = 0; i < localKeys.length; ++i) {
+			var key = localKeys[i];
+			local[key] = items[key];
+			delete items[key];
+		}
+		LOCAL.set(local, function() {
+			REMOTE.set(items, callback);
+		})
+	}
+	var remove = function(keys, callback) {
+		k = divideKeys(keys);
+		LOCAL.remove(k["local"], function() {
+			REMOTE.remove(k["remote"], callback);
+		})
+	}
+	var clear = function(callback) {
+		LOCAL.clear(function() {
+			REMOTE.clear(callback);
+		});
+	}
+	return {
+		get: get
+	,	set: set
+	,	remove: remove
+	,	clear: clear
+	}
+})(storage.LOCAL, storage.REMOTE)
+
+// Use the hybrid storage as the main storage.
+storage.RAW = storage.HYBRID;
 
 storage.setObject = function (key, value, callback) {
 	var str = JSON.stringify (value);
