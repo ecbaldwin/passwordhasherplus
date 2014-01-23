@@ -127,6 +127,7 @@ function selectionChanged () {
 
 selectfield.addEventListener ("change", selectionChanged);
 
-selectionChanged ();
+// For some reason, the urls multiselect is not quite ready to run selectionChanged yet.  Wait 300ms
+setTimeout(selectionChanged, 300);
 
 });

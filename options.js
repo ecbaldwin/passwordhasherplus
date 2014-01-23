@@ -97,6 +97,7 @@ function loadStorage (callback) {
 // `DOMContentLoaded` event on the document, and adding your listeners to
 // specific elements when it triggers.
 document.addEventListener('DOMContentLoaded', function () {
+	storage.migrate (function () {
 	restoreOptions (function() {
 	refreshStorage (function() {
   
@@ -113,6 +114,7 @@ document.addEventListener('DOMContentLoaded', function () {
 	$('#dbRevert').click(function() {refreshStorage()});
 
 	$('a').click(function() {chrome.tabs.create({url:'chrome-extension://'+location.hostname+'/passhashplus.html'})});
+	});
 	});
 	});
 

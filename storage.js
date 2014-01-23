@@ -168,11 +168,29 @@ storage.HYBRID = (function(local, remote) {
 			REMOTE.clear(callback);
 		});
 	}
+	var newRemote = function(remote, callback) {
+		if (REMOTE === remote) {
+			callback();
+			return;
+		}
+		var old_remote = REMOTE;
+		REMOTE = remote;
+
+		old_remote.get(null, function(items) {
+			k = divideKeys(Object.keys(items));
+			old_remote.get(k.remote, function(remote_items) {
+				remote.set(remote_items, function() {
+					old_remote.remove(k.remote, callback);
+				});
+			})
+		})
+	}
 	return {
 		get: get
 	,	set: set
 	,	remove: remove
 	,	clear: clear
+	,	newRemote: newRemote
 	}
 })(storage.LOCAL, storage.REMOTE)
 
@@ -412,10 +430,33 @@ storage.loadConfigs = function (callback) {
 	});
 }
 
+var moveStorage = function(callback) {
+	storage.LOCAL.get("options", function(items) {
+		var options = JSON.parse(items.options);
+		if (! options) {
+			return;
+		}
+		var storage_types = {};
+		if (chrome.storage) {
+			storage_types["chromelocal"] = chrome.storage.local;
+			storage_types["chromesync"] = chrome.storage.sync;
+		}
+
+		var new_remote = storage.LOCAL;
+		if(options.storage && storage_types[options.storage]) {
+			new_remote = storage_types[options.storage];
+		}
+
+		storage.HYBRID.newRemote(new_remote, callback);
+	});
+}
+
 storage.migrate = function (callback) {
 	var self = this;
 	var migrate_v6 = function() {
-		self.runMigration (6, function(c) {self.migrate_v6(c)}, callback);
+		self.runMigration (6, function(c) {self.migrate_v6(c)}, function() {
+			moveStorage(callback);
+		});
 	}
 	var migrate_v5 = function() {
 		self.runMigration (5, function(c) {self.migrate_v5(c)}, migrate_v6);
