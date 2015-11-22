@@ -53,6 +53,9 @@ storage.migrate (function () {
 chrome.extension.onConnect.addListener (function (port) {
 	console.assert (port.name == "passhash");
 	port.onMessage.addListener (function (msg) {
+		if (msg.fields.length === 0) {
+			return;
+		}
 		if (null != msg.init) {
 			var url = grepUrl (msg.url);
 			storage.loadConfig (url, function(config) {
