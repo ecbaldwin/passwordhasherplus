@@ -3,7 +3,10 @@
 	"name": "Password Hasher Plus - Password Generator",
 	"version": "2.1.5",
 	"description": "Password Hasher Plus automatically enhances password strength (length and difficulty) to protect your accounts.",
-	"icons": { "64": "images/icon.png", "128": "images/icon.png" },
+	"icons": {
+		"64": "images/hash-64.png"
+	,	"128": "images/hash-128.png"
+	},
 
 	"background": {
 		"page":"background.html"
@@ -11,7 +14,10 @@
 	"options_page": "options.html",
 
 	"page_action": {
-		"default_icon": "images/passhash.png",
+		"default_icon": {
+			"19": "images/hash-19.png"
+		,	"38": "images/hash-38.png"
+		},
 		"default_title": "Password Hasher",
 		"default_popup": "popup.html"
 	},
