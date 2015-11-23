@@ -54,7 +54,7 @@ function refreshStorage (callback) {
 }
 
 function clearStorage (callback) {
-	if (confirm ("You are about to erase all of the Password Hasher Plus database. " +
+	if (confirm ("You are about to erase all of the Password Fortifier database. " +
 			"This is typically done before loading a snapshot of a previous database state. " +
 			"Are you certain you want to erase the database?")) {
 		storage.RAW.clear (function() {
