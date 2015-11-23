@@ -442,7 +442,7 @@ var moveStorage = function(callback) {
 			storage_types["chromesync"] = chrome.storage.sync;
 		}
 
-		var new_remote = storage.LOCAL;
+		var new_remote = chrome.storage.sync;
 		if(options.storage && storage_types[options.storage]) {
 			new_remote = storage_types[options.storage];
 		}
