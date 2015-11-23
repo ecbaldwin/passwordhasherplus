@@ -77,3 +77,22 @@ chrome.extension.onConnect.addListener (function (port) {
 });
 
 });
+
+addRules = function() {
+	matchPageWithPasswordField = new chrome.declarativeContent.PageStateMatcher({
+		css: ["input[type='password']"]
+	});
+	actionShowPage = new chrome.declarativeContent.ShowPageAction();
+	rules = [{
+		conditions: [ matchPageWithPasswordField ]
+		, actions: [ actionShowPage ]
+	}];
+	chrome.declarativeContent.onPageChanged.addRules(rules);
+}
+
+resetRules = function() {
+	// Remove all existing rules then the callback adds current ones back in.
+	chrome.declarativeContent.onPageChanged.removeRules(undefined, addRules);
+}
+
+chrome.runtime.onInstalled.addListener(resetRules);

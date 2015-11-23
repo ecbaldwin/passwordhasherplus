@@ -10,7 +10,7 @@
 	},
 	"options_page": "options.html",
 
-	"browser_action": {
+	"page_action": {
 		"default_icon": "images/passhash.png",
 		"default_title": "Password Hasher",
 		"default_popup": "popup.html"
@@ -27,6 +27,6 @@
 	],
 
 	"permissions": [
-		"tabs", "http://*/*", "https://*/*", "storage"
+		"tabs", "http://*/*", "https://*/*", "storage", "declarativeContent"
 	]
 }
