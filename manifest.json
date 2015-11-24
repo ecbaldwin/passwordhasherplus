@@ -1,7 +1,7 @@
 {
 	"manifest_version": 2,
 	"name": "Password Fortifier",
-	"version": "1.0.0",
+	"version": "0.1.0",
 	"description": "Password Fortifier enhances password strength (length and difficulty) to protect your accounts.",
 	"icons": {
 		"64": "images/hash-64.png"
