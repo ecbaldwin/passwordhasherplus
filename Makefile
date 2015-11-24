@@ -1,12 +1,12 @@
 #! /bin/make
 
-default: export passhashplus.html
+default: export passwordfortifier.html
 
 version=$(shell grep "\"version\"" manifest.json  | cut -d: -f2 | cut -d\" -f2)
 
 export=_export
 
-zip=passhashplus-${version}.zip
+zip=passwordfortifier-${version}.zip
 
 export:
 	if [ ! -e archive ] ; then mkdir archive; fi
