@@ -9,7 +9,7 @@ function writeModel () {
 	} else {
 		config.policy.seedRef = hex_hmac_sha1(
 			config.options.salt,
-			config.options.privateSeed).substring(0,7);
+			config.secrets.privateSeed).substring(0,7);
 	}
 	config.policy.length = $('#length').val ();
 	config.policy.strength = $('#strength').val ();

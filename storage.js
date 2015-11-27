@@ -102,14 +102,12 @@ storage.LOCAL = (function() {
 	}
 })()
 
-storage.REMOTE = storage.LOCAL;
-
 // Stores secrets locally and other data remotely.  Allows the rest of
 // the application to continue operating as if there is only one store.
 storage.HYBRID = (function(local, remote) {
 	var LOCAL = local;
 	var REMOTE = remote;
-	var localKeys = {"version":true, "options":true};
+	var localKeys = {"version":true, "secrets":true};
 	var divideKeys = function(keys) {
 		if (keys === null) {
 			return {"local": null, "remote": null};
@@ -193,7 +191,7 @@ storage.HYBRID = (function(local, remote) {
 	,	clear: clear
 	,	newRemote: newRemote
 	}
-})(storage.LOCAL, storage.REMOTE)
+})(storage.LOCAL, storage.LOCAL)
 
 // Use the hybrid storage as the main storage.
 storage.RAW = storage.HYBRID;
@@ -245,14 +243,18 @@ storage.getObjects = function (keys, callback) {
 	});
 }
 
-storage.addDefaultOptions = function(options, callback) {
+storage.addDefaultOptions = function(options, secrets, callback) {
 	var dirty = false;
-	if (null == options) {
+	if (!options) {
 		options = new Object ();
 		dirty = true;
 	}
-	if (null == options.privateSeed) {
-		options.privateSeed = generateGuid ();
+	if (!secrets) {
+		secrets = new Object ();
+		dirty = true;
+	}
+	if (null == secrets.privateSeed) {
+		secrets.privateSeed = generateGuid ();
 		dirty = true;
 	}
 	// This value is not secret.
@@ -260,15 +262,15 @@ storage.addDefaultOptions = function(options, callback) {
 		options.salt = generateGuid ();
 		dirty = true;
 	}
-	if (null == options.seeds) {
-		options.seeds = {};
+	if (null == secrets.seeds) {
+		secrets.seeds = {};
 		dirty = true;
 	}
 	var seedDigest = hex_hmac_sha1(
 		options.salt,
-		options.privateSeed).substring(0,7);
-	if (null == options.seeds[seedDigest]) {
-		options.seeds[seedDigest] = options.privateSeed;
+		secrets.privateSeed).substring(0,7);
+	if (null == secrets.seeds[seedDigest]) {
+		secrets.seeds[seedDigest] = secrets.privateSeed;
 		dirty = true;
 	}
 	if (null == options.defaultLength) {
@@ -288,25 +290,33 @@ storage.addDefaultOptions = function(options, callback) {
 		dirty = true;
 	}
 	if (dirty) {
-		this.saveOptions (options, function() {
-			callback(options);
+		this.saveOptions (options, secrets, function() {
+			callback(options, secrets);
 		});
 	} else {
-		callback (options);
+		callback(options, secrets);
 	}
 }
 
-storage.saveOptions = function (options, callback) {
+storage.saveOptions = function (options, secrets, callback) {
 	var self = this;
-	self.addDefaultOptions(options, function() {
-		self.setObject ("options", options, callback);
+	self.addDefaultOptions(options, secrets, function() {
+		self.setObject ("options", options, function () {
+			if (secrets !== undefined) {
+				self.setObject ("secrets", secrets, callback);
+			} else {
+				callback();
+			}
+		});
 	});
 }
 
 storage.loadOptions = function (callback) {
 	var self = this;
 	self.getObject ("options", function(options) {
-		self.addDefaultOptions(options, callback);
+		self.getObject ("secrets", function(secrets) {
+			self.addDefaultOptions(options, secrets, callback);
+		});
 	});
 }
 
@@ -315,9 +325,11 @@ storage.saveConfig = function (url, config, callback) {
 	config.fields = toArray (config.fields);
 
 	var options = config.options;
+	var secrets = config.secrets;
 	var policy = config.policy;
 	delete config.policy;
 	delete config.options;
+	delete config.secrets;
 
 	var tag = "tag:" + config.tag;
 	var url = "url:" + url;
@@ -327,6 +339,7 @@ storage.saveConfig = function (url, config, callback) {
 	this.setObjects(items, function() {
 	config.policy = policy;
 	config.options = options;
+	config.secrets = secrets;
 	if (callback) callback();
 	});
 }
@@ -380,8 +393,9 @@ storage.loadConfig = function (url, callback) {
 		config.fields = new Array ();
 	}
 
-	self.loadOptions (function(options) {
+	self.loadOptions (function(options, secrets) {
 	config.options = options;
+	config.secrets = secrets;
 	self.getObject ("tag:" + config.tag, function(policy) {
 		config.policy = policy;
 
@@ -389,7 +403,7 @@ storage.loadConfig = function (url, callback) {
 			config.policy = new Object ();
 			config.policy.seedRef = hex_hmac_sha1(
 				config.options.salt,
-				config.options.privateSeed).substring(0,7);
+				config.secret.privateSeed).substring(0,7);
 			config.policy.length = config.options.defaultLength;
 			config.policy.strength = config.options.defaultStrength;
 		}
@@ -402,13 +416,14 @@ storage.loadConfig = function (url, callback) {
 
 storage.loadConfigs = function (callback) {
 	var self = this;
-	self.loadOptions (function(options) {
+	self.loadOptions (function(options, secrets) {
 		self.getObjects (null, function(objects) {
 			urls = {};
 			for (key in objects) {
 				if (key.startsWith ("url:")) {
 					config = objects[key];
 					config.options = options;
+					config.secrets = secrets;
 					var tag = "tag:" + config.tag;
 					config.policy = objects[tag];
 
@@ -416,7 +431,7 @@ storage.loadConfigs = function (callback) {
 						config.policy = new Object ();
 						config.policy.seedRef = hex_hmac_sha1(
 							config.options.salt,
-							config.options.privateSeed).substring(0,7);
+							config.secrets.privateSeed).substring(0,7);
 						config.policy.length = config.options.defaultLength;
 						config.policy.strength = config.options.defaultStrength;
 					}
@@ -432,10 +447,13 @@ storage.loadConfigs = function (callback) {
 }
 
 var moveStorage = function(callback) {
-	storage.LOCAL.get("options", function(items) {
-		var options = JSON.parse(items.options);
+	storage.LOCAL.get(["secrets", "options"], function(items) {
+		var options = JSON.parse(items.secrets);
 		if (! options) {
-			return;
+			var options = JSON.parse(items.options);
+			if (! options) {
+				options = Object();
+			}
 		}
 		var storage_types = {};
 		if (chrome.storage) {
@@ -454,10 +472,13 @@ var moveStorage = function(callback) {
 
 storage.migrate = function (callback) {
 	var self = this;
-	var migrate_v6 = function() {
-		self.runMigration (6, function(c) {self.migrate_v6(c)}, function() {
+	var migrate_v7 = function() {
+		self.runMigration (7, function(c) {self.migrate_v7(c)}, function() {
 			moveStorage(callback);
 		});
+	}
+	var migrate_v6 = function() {
+		self.runMigration (6, function(c) {self.migrate_v6(c)}, migrate_v7);
 	}
 	var migrate_v5 = function() {
 		self.runMigration (5, function(c) {self.migrate_v5(c)}, migrate_v6);
@@ -491,6 +512,22 @@ storage.migrate = function (callback) {
 	})
 }
 
+storage.migrate_v7 = function (callback) {
+	var self = this;
+	self.getObjects(null, function(items) {
+		self.loadOptions(function(options) {
+			var secrets = Object();
+			secrets.privateSeed = options.privateSeed;
+			secrets.seeds = options.seeds;
+			secrets.storage = options.storage;
+			delete options.privateSeed;
+			delete options.seeds;
+			delete options.storage;
+			self.saveOptions(options, secrets, callback);
+		});
+	});
+}
+
 storage.migrate_v6 = function (callback) {
 	var self = this;
 	self.getObjects(null, function(items) {
@@ -500,7 +537,7 @@ storage.migrate_v6 = function (callback) {
 		if (key.startsWith ("tag:")) {
 			var value = items [key];
 			if (value.seed) {
-				console.log("Strubbing secret for " + value.tag);
+				console.log("Scrubbing secret for " + value.tag);
 				value.seedRef = hex_hmac_sha1(
 					options.salt,
 					value.seed).substring(0,7);
@@ -570,7 +607,7 @@ storage.migrate_v4 = function (callback) {
 
 	self.RAW.remove(del_keys, function() {
 		self.setObjects(update_objects, function() {
-			self.saveOptions (options, callback)
+			self.saveOptions (options, undefined, callback)
 		});
 	});
 	});

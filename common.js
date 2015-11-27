@@ -76,7 +76,7 @@ function generateHash (config, input) {
 	if (!seed) {
 		var seedRef = config.policy.seedRef;
 		if (seedRef) {
-			seed = config.options.seeds[seedRef];
+			seed = config.secrets.seeds[seedRef];
 		}
 	}
 	if (false == config.options.compatibilityMode && null != seed) {

@@ -20,8 +20,8 @@ function loadOptions (callback) {
 	return storage.loadOptions (callback);
 }
 
-function saveOptions (options, callback) {
-	storage.saveOptions (options, function() {
+function saveOptions (options, secrets, callback) {
+	storage.saveOptions (options, secrets, function() {
 		refreshTabs (callback);
 	});
 }

@@ -119,7 +119,7 @@ function selectionChanged () {
 	var url = $("#urls option:selected").val ();
 	var config = urls[url];
 	tagfield.value = config.tag;
-	seedfield.value = config.options.seeds[config.policy.seedRef];
+	seedfield.value = config.secrets.seeds[config.policy.seedRef];
 	lengthfield.value = config.policy.length;
 	strengthfield.value = config.policy.strength;
 	update ();
