@@ -472,66 +472,52 @@ var moveStorage = function(callback) {
 
 storage.migrate = function (callback) {
 	var self = this;
-	var migrate_v7 = function() {
-		self.runMigration (7, function(c) {self.migrate_v7(c)}, function() {
-			moveStorage(callback);
-		});
+	var migrate_remove_secrets_from_tags = function() {
+		self.migrate_remove_secrets_from_tags(callback);
 	}
-	var migrate_v6 = function() {
-		self.runMigration (6, function(c) {self.migrate_v6(c)}, migrate_v7);
+	var remove_version = function() {
+		self.RAW.remove("version", migrate_remove_secrets_from_tags);
 	}
-	var migrate_v5 = function() {
-		self.runMigration (5, function(c) {self.migrate_v5(c)}, migrate_v6);
+	var init_options = function() {
+		self.loadOptions(remove_version);
 	}
-	var migrate_v4 = function() {
-		self.runMigration (4, function(c) {self.migrate_v4(c)}, migrate_v5);
+	var migrate_create_secrets = function() {
+		self.migrate_create_secrets(init_options);
 	}
-	var migrate_v3 = function() {
-		self.runMigration (3, function(c) {self.migrate_v3(c)}, migrate_v4);
-	}
-	var migrate_v2 = function() {
-		self.runMigration (2, function(c) {self.migrate_v2(c)}, migrate_v3);
-	}
-	var migrate_v1 = function() {
-		self.runMigration (1, function(c) {self.migrate_v1(c)}, migrate_v2);
-	}
+    var move_storage = function() {
+		moveStorage(migrate_create_secrets);
+    }
 
-	self.RAW.get("version", function(version) {
-		if (null == version) {
-			self.RAW.get("option:private_seed", function(private_seed) {
-				if (null != private_seed) {
-					// Migrate Password Hasher Plus Plus databases
-					self.RAW.set({"version": "1"}, migrate_v2);
-				} else {
-					self.RAW.set({"version": "0"}, migrate_v1);
-				}
-			})
-			return;
-		}
-		migrate_v2();
-	})
+	move_storage();
 }
 
-storage.migrate_v7 = function (callback) {
+storage.migrate_create_secrets = function (callback) {
 	var self = this;
-	self.getObjects(null, function(items) {
-		self.loadOptions(function(options) {
-			var secrets = Object();
+	self.getObjects(["options", "secrets"], function(items) {
+		var options = items.options;
+		if (! options) {
+			if (callback) callback();
+			return;
+		}
+		var secrets = items.secrets;
+		if (! secrets) {
+			secrets = Object();
 			secrets.privateSeed = options.privateSeed;
 			secrets.seeds = options.seeds;
 			secrets.storage = options.storage;
-			delete options.privateSeed;
-			delete options.seeds;
-			delete options.storage;
-			self.saveOptions(options, secrets, callback);
-		});
+		}
+		delete options.privateSeed;
+		delete options.seeds;
+		delete options.storage;
+		self.saveOptions(options, secrets, callback);
 	});
 }
 
-storage.migrate_v6 = function (callback) {
+storage.migrate_remove_secrets_from_tags = function (callback) {
 	var self = this;
 	self.getObjects(null, function(items) {
-	self.loadOptions(function(options) {
+	var secrets = items.secrets;
+	var options = items.options;
 	var newitems = {};
 	for (var key in items) {
 		if (key.startsWith ("tag:")) {
@@ -541,156 +527,13 @@ storage.migrate_v6 = function (callback) {
 				value.seedRef = hex_hmac_sha1(
 					options.salt,
 					value.seed).substring(0,7);
+				secrets.seeds[value.seedRef] = value.seed;
 				delete value.seed;
 				newitems[key] = value;
 			}
 		}
 	}
+	newitems["secrets"] = secrets;
 	self.setObjects(newitems, callback);
-	});
-	});
-}
-
-storage.migrate_v5 = function (callback) {
-	var self = this;
-	self.getObjects(null, function(items) {
-	var newitems = {};
-	for (var key in items) {
-		if (key.startsWith ("url:")) {
-			var config = items[key];
-			var tagName = config.tag;
-			var tag = new Object ();
-			tag.strength = config.strength;
-			tag.length = config.length;
-			tag.seed = config.seed;
-			delete config.strength;
-			delete config.length;
-			delete config.seed;
-			newitems[key] = config;
-			newitems["tag:" + tagName] = tag;
-		}
-	}
-	self.setObjects(newitems, callback);
-	});
-}
-storage.migrate_v4 = function (callback) {
-	var self = this;
-	self.RAW.get(null, function(items) {
-	var options = new Object ();
-	options.defaultLength = items["option:default_length"];
-	options.defaultStrength = items["option:default_strength"];
-	options.privateSeed = items["option:private_seed"];
-	options.compatibilityMode = ("true" === items["option:compatibility_mode"]);
-	options.backedUp = ("true" === items["option:backed_up"]);
-
-	self.getObjects(null, function(objects) {
-	var del_keys = [];
-	var update_objects = {};
-	for (var key in objects) {
-		if (key.startsWith ("option:")) {
-			del_items.push (key);
-		} else if (key.startsWith ("url:")) {
-			var config = objects[key];
-			try {
-				if (config.tag.startsWith ("compatible:")) {
-					delete config.seed;
-					config.tag = config.tag.substringAfter ("compatible:");
-				}
-				delete config.compatibilitymode;
-				delete config.backedup;
-				update_objects[key] = config;
-			} catch (e) {
-				console.log ("failed to migrate " + key);
-			}
-		}
-	}
-
-	self.RAW.remove(del_keys, function() {
-		self.setObjects(update_objects, function() {
-			self.saveOptions (options, undefined, callback)
-		});
-	});
-	});
-	});
-}
-
-storage.migrate_v3 = function (callback) {
-	var self = this;
-	self.getObjects(null, function(objects) {
-	var set_objects = {};
-	for (var key in objects) {
-		if (!key.startsWith ("url:")) {
-			continue;
-		}
-		try {
-			var config = objects[key];
-			var config2 = new Object ();
-			config2.tag = config.site;
-			for (var property in config) {
-				config2[property] = config[property];
-			}
-			delete config2.site;
-			set_objects[key] = config2;
-		} catch (e) {
-			console.log ("failed to migrate " + key);
-		}
-	}
-	self.setObjects(set_objects, callback);
-	});
-}
-
-storage.migrate_v2 = function (callback) {
-	var self = this;
-	self.RAW.get(null, function(items) {
-	var set_items = {};
-	var del_keys = [];
-	var reg = new RegExp ("^site:.*$");
-	for (var key in items) {
-		if (reg.test (key)) {
-			var to = "url";
-			set_items[to + key.slice(4)] = items[key];
-			del_keys.push(key);
-		}
-	}
-	self.RAW.remove(del_keys, function() {
-		self.RAW.set(set_items, callback);
-	});
-	});
-}
-
-storage.migrate_v1 = function (callback) {
-	var self = this;
-	self.RAW.get(null, function(items) {
-	var set_items = {"version": "1"};
-	var del_keys = [];
-	var reg = new RegExp ("^compatibility_mode|default_length|default_strength|private_seed|backed_up$");
-	for (var key in items) {
-		var to = "site";
-		if ("version" == key) {
-			continue;
-		} else if (reg.test (key)) {
-			to = "option";
-		}
-		set_items[to + ":" + key] = items[key];
-		del_keys.push(key);
-	}
-	self.RAW.remove(del_keys, function() {
-		self.RAW.set(set_items, callback);
-	});
-	});
-}
-
-storage.runMigration = function (toVersion, func, callback) {
-	var self = this;
-	self.RAW.get("version", function(items) {
-	var version = parseInt (items["version"]);
-	if (toVersion <= version) {
-		if (callback) callback();
-		return;
-	}
-
-	func (function() {
-		self.RAW.set({"version": toVersion}, callback);
-	});
 	});
 }
