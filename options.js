@@ -108,7 +108,9 @@ document.addEventListener('DOMContentLoaded', function () {
 		storage.collectGarbage (refreshStorage);
 	});
 	$('#dbClear').click(function() {
-		clearStorage (refreshStorage);
+		clearStorage (function() {
+            refreshStorage(restoreOptions)
+        })
 	});
 	$('#dbSave').click(function() {loadStorage()});
 	$('#dbRevert').click(function() {refreshStorage()});
