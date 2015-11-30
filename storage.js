@@ -331,10 +331,11 @@ storage.saveConfig = function (url, config, callback) {
 	delete config.options;
 	delete config.secrets;
 
-	var tag = "tag:" + config.tag;
 	var url = "url:" + url;
+	config.length = policy.length;
+	config.strength = policy.strength;
+	config.seedRef = policy.seedRef;
 	items = {}
-	items[tag] = policy;
 	items[url] = config;
 	this.setObjects(items, function() {
 	config.policy = policy;
@@ -345,11 +346,12 @@ storage.saveConfig = function (url, config, callback) {
 }
 
 storage.loadTags = function (callback) {
-	this.RAW.get(null, function(items) {
+	this.getObjects(null, function(items) {
 		var tags = []
 		for (var key in items) {
-			if (key.startsWith ("tag:")) {
-				tags.push (key.substringAfter ("tag:"));
+			item = items[key];
+			if (key.startsWith ("url:")) {
+				tags.push (item.tag);
 			}
 		}
 		callback(tags);
@@ -368,22 +370,6 @@ storage.isTagReferenced = function (items, tag) {
 	return false;
 }
 
-storage.collectGarbage = function (callback) {
-	// remove unreferenced tags
-	var self = this;
-	self.getObjects(null, function(items) {
-	var del_keys = [];
-	for (var key in items) {
-		if (key.startsWith ("tag:")) {
-			if (!self.isTagReferenced (items, key.substringAfter ("tag:"))) {
-				del_keys.push(key);
-			}
-		}
-	}
-	self.RAW.remove(del_keys, callback);
-	});
-}
-
 storage.loadConfig = function (url, callback) {
 	var self = this;
 	self.getObject ("url:" + url, function(config) {
@@ -396,20 +382,19 @@ storage.loadConfig = function (url, callback) {
 	self.loadOptions (function(options, secrets) {
 	config.options = options;
 	config.secrets = secrets;
-	self.getObject ("tag:" + config.tag, function(policy) {
-		config.policy = policy;
-
-		if (null == config.policy) {
-			config.policy = new Object ();
-			config.policy.seedRef = hex_hmac_sha1(
-				config.options.salt,
-				config.secret.privateSeed).substring(0,7);
-			config.policy.length = config.options.defaultLength;
-			config.policy.strength = config.options.defaultStrength;
-		}
-
-		callback (config);
-	});
+	if (! config.seedRef) {
+		config.seedRef = hex_hmac_sha1(
+			config.options.salt,
+			config.secrets.privateSeed).substring(0,7);
+		config.length = config.options.defaultLength;
+		config.strength = config.options.defaultStrength;
+	}
+	config.policy = {
+		"seedRef": config.seedRef
+	,	"length": config.length
+	,	"strength": config.strength
+	}
+	callback (config);
 	});
 	});
 }
@@ -425,10 +410,13 @@ storage.loadConfigs = function (callback) {
 					config.options = options;
 					config.secrets = secrets;
 					var tag = "tag:" + config.tag;
-					config.policy = objects[tag];
+					config.policy = {
+						"seedRef": config.seedRef
+					,	"length": config.length
+					,	"strength": config.strength
+					}
 
-					if (! config.policy) {
-						config.policy = new Object ();
+					if (! config.policy.seedRef) {
 						config.policy.seedRef = hex_hmac_sha1(
 							config.options.salt,
 							config.secrets.privateSeed).substring(0,7);
@@ -438,7 +426,6 @@ storage.loadConfigs = function (callback) {
 
 					var url = key.slice (4);
 					urls[url] = config;
-
 				}
 			}
 			callback (urls);
@@ -472,8 +459,11 @@ var moveStorage = function(callback) {
 
 storage.migrate = function (callback) {
 	var self = this;
+	var migrate_remove_tags = function() {
+		self.migrate_remove_tags(callback);
+	}
 	var migrate_remove_secrets_from_tags = function() {
-		self.migrate_remove_secrets_from_tags(callback);
+		self.migrate_remove_secrets_from_tags(migrate_remove_tags);
 	}
 	var remove_version = function() {
 		self.RAW.remove("version", migrate_remove_secrets_from_tags);
@@ -484,11 +474,40 @@ storage.migrate = function (callback) {
 	var migrate_create_secrets = function() {
 		self.migrate_create_secrets(init_options);
 	}
-    var move_storage = function() {
+	var move_storage = function() {
 		moveStorage(migrate_create_secrets);
-    }
+	}
 
 	move_storage();
+}
+
+storage.migrate_remove_tags = function (callback) {
+	var self = this;
+	self.getObjects(null, function(items) {
+		var newitems = {};
+		var tags_to_remove = [];
+		for (var key in items) {
+			if (key.startsWith ("url:")) {
+				var value = items [key];
+				if (value.tag) {
+					console.log("Combining tag for " + value.url);
+					tag = items["tag:" + value.tag]
+					if (tag) {
+						value.length = tag.length;
+						value.strength = tag.strength;
+						value.seedRef = tag.seedRef;
+					}
+					newitems[key] = value;
+				}
+			}
+			if (key.startsWith ("tag:")) {
+				tags_to_remove.push(key);
+			}
+		}
+		self.setObjects(newitems, function() {
+			self.RAW.remove(tags_to_remove, callback);
+		});
+	});
 }
 
 storage.migrate_create_secrets = function (callback) {

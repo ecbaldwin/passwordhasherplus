@@ -104,9 +104,6 @@ document.addEventListener('DOMContentLoaded', function () {
 	$('#generate').click(setNewGuid);
 	$('#backupSave').click(saveOptions);
 	$('#backupRevert').click(restoreOptions);
-	$('#removeUnUsedTags').click(function() {
-		storage.collectGarbage (refreshStorage);
-	});
 	$('#dbClear').click(function() {
 		clearStorage (function() {
             refreshStorage(restoreOptions)
