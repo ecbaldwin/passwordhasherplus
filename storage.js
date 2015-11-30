@@ -285,10 +285,6 @@ storage.addDefaultOptions = function(options, secrets, callback) {
 		options.backedUp = false;
 		dirty = true;
 	}
-	if (null == options.compatibilityMode) {
-		options.compatibilityMode = false;
-		dirty = true;
-	}
 	if (dirty) {
 		this.saveOptions (options, secrets, function() {
 			callback(options, secrets);

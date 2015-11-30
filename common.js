@@ -79,7 +79,7 @@ function generateHash (config, input) {
 			seed = config.secrets.seeds[seedRef];
 		}
 	}
-	if (false == config.options.compatibilityMode && null != seed) {
+	if (null != seed) {
 		tag = PassHashCommon.generateHashWord (
 			seed,
 			tag,
@@ -106,19 +106,11 @@ function generateHash (config, input) {
 
 function bump (tag) {
 	var re = new RegExp ("^([^:]+?)(:([0-9]+))?$");
-	var compatible = false;
-	if (tag.startsWith ("compatible:")) {
-		tag = tag.substringAfter ("compatible:");
-		compatible = true;
-	}
 	var matcher = re.exec (tag);
 	var bump = 1;
 	if (null != matcher[3]) {
 		tag = matcher[1];
 		bump += parseInt (matcher[3]);
-	}
-	if (compatible) {
-		tag = "compatible:" + tag;
 	}
 	return tag + ":" + bump;
 }

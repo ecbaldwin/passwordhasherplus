@@ -8,7 +8,6 @@ function saveOptions (callback) {
 	storage.loadOptions (function(options, secrets) {
 	options.defaultLength = document.getElementById ("length").value;
 	options.defaultStrength = document.getElementById ("strength").value;
-	options.compatibilityMode = document.getElementById ("compatibility").checked;
 	secrets.privateSeed = document.getElementById ("seed").value;
 	options.backedUp = document.getElementById ("backedup").checked;
 	chrome.extension.getBackgroundPage ().saveOptions (options, secrets, function() {
@@ -21,7 +20,6 @@ function restoreOptions (callback) {
 	storage.loadOptions (function(options, secrets) {
 	document.getElementById ("length").value = options.defaultLength;
 	document.getElementById ("strength").value = options.defaultStrength;
-	document.getElementById ("compatibility").checked = options.compatibilityMode;
 	document.getElementById ("seed").value = secrets.privateSeed;
 	document.getElementById ("backedup").checked = options.backedUp;
 	if (callback) callback();
