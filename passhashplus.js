@@ -1,133 +1,129 @@
-
 $(document).ready(function() {
+    if (typeof String.prototype.startsWith != 'function') {
+        String.prototype.startsWith = function (str){
+            return this.indexOf(str) == 0;
+        };
+    }
+
+    if (typeof chrome != "undefined" && chrome.extension) {
+        chrome.extension.getBackgroundPage ().loadOptions (function(o) {
+            // Set the global options
+            options = o;
+            chrome.extension.getBackgroundPage ().loadConfigs (function(u) {
+                // Set the global urls
+                urls = u;
+
+                $.each (urls, function (key, value) {
+                    $("#urls").append ($("<option></option>").attr("value", key).text (value.tag));
+                });
+
+                function sortAlpha (a,b) {
+                    return a.innerHTML.toLowerCase() > b.innerHTML.toLowerCase() ? 1 : -1;
+                }
+
+                $("#urls option").sort (sortAlpha).appendTo ("#urls");
+            });
+        });
+    }
 
 
-if (typeof String.prototype.startsWith != 'function') {
-	String.prototype.startsWith = function (str){
-		return this.indexOf(str) == 0;
-	};
-}
+    $('#length').val (12);
+    $('#strength').val (2);
 
-if (typeof chrome != "undefined" && chrome.extension) {
-	chrome.extension.getBackgroundPage ().loadOptions (function(o) {
-	// Set the global options
-	options = o;
-	chrome.extension.getBackgroundPage ().loadConfigs (function(u) {
-	// Set the global urls
-	urls = u;
+    function toggleField () {
+        var button = this;
+        var field = $(this).prev ("input").get (0);
+        if ("text" == field.type) {
+            field.type = "password";
+            button.value = "a";
+            button.title = "Show contents (Ctrl + *)";
+        } else {
+            field.type = "text";
+            button.value = "*";
+            button.title = "Mask contents (Ctrl + *)";
+        }
+    }
 
-	$.each (urls, function (key, value) {
-		$("#urls").append ($("<option></option>").attr("value", key).text (value.tag));
-	});
+    $('#unmaskseed').click (toggleField);
+    $('#unmasktag').click (toggleField);
+    $('#unmaskpassword').click (toggleField);
 
-	function sortAlpha (a,b) {
-		return a.innerHTML.toLowerCase() > b.innerHTML.toLowerCase() ? 1 : -1;
-	}
+    $('#bump').click (function () {
+        $("#tag").val (bump ($("#tag").val ()));
+        update ();
+    });
 
-	$("#urls option").sort (sortAlpha).appendTo ("#urls");
-	});
-	});
-}
+    $('#save').click (function () {
+        var html = $('html').clone();
 
+        html.find('script').each(function() {
+            var $this = $(this);
+            var success = function(data) {
+                $this.attr('src', "data:application/octet-stream," + encodeURIComponent(data));
+            };
+            $.ajax({'url':$this.attr('src'),'dataType':'text', 'success': success, async:false});
+        });
 
-$('#length').val (12);
-$('#strength').val (2);
+        var template = html.find('head').append('<script type="text/javascript" id="template"></script>')
 
-function toggleField () {
-	var button = this;
-	var field = $(this).prev ("input").get (0);
-	if ("text" == field.type) {
-		field.type = "password";
-		button.value = "a";
-		button.title = "Show contents (Ctrl + *)";
-	} else {
-		field.type = "text";
-		button.value = "*";
-		button.title = "Mask contents (Ctrl + *)";
-	}
-}
+        $("#template", html).append ("options=JSON.parse(\"" + localStorage["options"].replace (/"/g, "\\\"") + "\");\n");
+        $("#template", html).append ("urls=JSON.parse(\"" + JSON.stringify (urls).replace (/"/g, "\\\"") + "\");\n");
 
-$('#unmaskseed').click (toggleField);
-$('#unmasktag').click (toggleField);
-$('#unmaskpassword').click (toggleField);
+        var uriContent = "data:application/octet-stream," + encodeURIComponent(html.html());
+        location.href=uriContent;
+    });
 
-$('#bump').click (function () {
-	$("#tag").val (bump ($("#tag").val ()));
-	update ();
-});
+    var selectfield = $('#urls').get (0);
+    var tagfield = $('#tag').get (0);
+    var seedfield = $('#seed').get (0);
+    var lengthfield = $('#length').get (0);
+    var strengthfield = $('#strength').get (0);
+    var inputfield = $('#input').get (0);
+    var hashfield = $('#hash').get (0);
 
-$('#save').click (function () {
-	var html = $('html').clone();
-	
-	html.find('script').each(function() {
-		var $this = $(this);
-		var success = function(data) {
-			$this.attr('src', "data:application/octet-stream," + encodeURIComponent(data));
-		};
-		$.ajax({'url':$this.attr('src'),'dataType':'text', 'success': success, async:false});
-	});
-	
-	var template = html.find('head').append('<script type="text/javascript" id="template"></script>')
-	
-	$("#template", html).append ("options=JSON.parse(\"" + localStorage["options"].replace (/"/g, "\\\"") + "\");\n");
-	$("#template", html).append ("urls=JSON.parse(\"" + JSON.stringify (urls).replace (/"/g, "\\\"") + "\");\n");
-	
-	var uriContent = "data:application/octet-stream," + encodeURIComponent(html.html());
-	location.href=uriContent;
-});
+    hashfield.readOnly = true;
 
-var selectfield = $('#urls').get (0);
-var tagfield = $('#tag').get (0);
-var seedfield = $('#seed').get (0);
-var lengthfield = $('#length').get (0);
-var strengthfield = $('#strength').get (0);
-var inputfield = $('#input').get (0);
-var hashfield = $('#hash').get (0);
+    function update () {
+        var config = new Object ();
+        config.tag = tagfield.value;
+        config.policy = new Object ();
+        config.policy.seed = seedfield.value;
+        config.policy.length = lengthfield.value;
+        config.policy.strength = strengthfield.value;
+        config.options = options;
+        var input = inputfield.value;
+        var hash = generateHash (config, input);
+        hashfield.value = hash;
+    }
 
-hashfield.readOnly = true;
+    tagfield.addEventListener ("keydown", update);
+    seedfield.addEventListener ("keydown", update);
+    inputfield.addEventListener ("keydown", update);
+    tagfield.addEventListener ("keyup", update);
+    seedfield.addEventListener ("keyup", update);
+    inputfield.addEventListener ("keyup", update);
+    tagfield.addEventListener ("change", update);
+    seedfield.addEventListener ("change", update);
+    inputfield.addEventListener ("change", update);
+    lengthfield.addEventListener ("change", update);
+    strengthfield.addEventListener ("change", update);
 
-function update () {
-	var config = new Object ();
-	config.tag = tagfield.value;
-	config.policy = new Object ();
-	config.policy.seed = seedfield.value;
-	config.policy.length = lengthfield.value;
-	config.policy.strength = strengthfield.value;
-	config.options = options;
-	var input = inputfield.value;
-	var hash = generateHash (config, input);
-	hashfield.value = hash;
-}
+    hashfield.addEventListener ("click", function () {
+        hashfield.select ();
+    });
 
-tagfield.addEventListener ("keydown", update);
-seedfield.addEventListener ("keydown", update);
-inputfield.addEventListener ("keydown", update);
-tagfield.addEventListener ("keyup", update);
-seedfield.addEventListener ("keyup", update);
-inputfield.addEventListener ("keyup", update);
-tagfield.addEventListener ("change", update);
-seedfield.addEventListener ("change", update);
-inputfield.addEventListener ("change", update);
-lengthfield.addEventListener ("change", update);
-strengthfield.addEventListener ("change", update);
+    function selectionChanged () {
+        var url = $("#urls option:selected").val ();
+        var config = urls[url];
+        tagfield.value = config.tag;
+        seedfield.value = config.secrets.seeds[config.policy.seedRef];
+        lengthfield.value = config.policy.length;
+        strengthfield.value = config.policy.strength;
+        update ();
+    }
 
-hashfield.addEventListener ("click", function () {
-	hashfield.select ();
-});
+    selectfield.addEventListener ("change", selectionChanged);
 
-function selectionChanged () {
-	var url = $("#urls option:selected").val ();
-	var config = urls[url];
-	tagfield.value = config.tag;
-	seedfield.value = config.secrets.seeds[config.policy.seedRef];
-	lengthfield.value = config.policy.length;
-	strengthfield.value = config.policy.strength;
-	update ();
-}
-
-selectfield.addEventListener ("change", selectionChanged);
-
-// For some reason, the urls multiselect is not quite ready to run selectionChanged yet.  Wait 300ms
-setTimeout(selectionChanged, 300);
-
+    // For some reason, the urls multiselect is not quite ready to run selectionChanged yet.  Wait 300ms
+    setTimeout(selectionChanged, 300);
 });

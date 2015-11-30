@@ -41,281 +41,281 @@ var id = 0;
 var fields = new Array ();
 
 function bind (f) {
-	var field = f;
-	$(field).addClass("passwordfortifier")
-	if ("" == field.id) {
-		field.id = "passhash_" + id++;
-	}
+    var field = f;
+    $(field).addClass("passwordfortifier")
+    if ("" == field.id) {
+        field.id = "passhash_" + id++;
+    }
 
-	if (-1 != $.inArray(field, fields) || $(field).hasClass ("nopasshash")) {
-		return false;
-	}
-	fields[fields.length] = field;
+    if (-1 != $.inArray(field, fields) || $(field).hasClass ("nopasshash")) {
+        return false;
+    }
+    fields[fields.length] = field;
 
-	var hasFocus = false;
-	var backgroundStyle = field.style.backgroundColor;
-	var input = field.value;
-	var hash = "";
-	var hashing = false;
-	var masking = true;
-	var editing = false;
+    var hasFocus = false;
+    var backgroundStyle = field.style.backgroundColor;
+    var input = field.value;
+    var hash = "";
+    var hashing = false;
+    var masking = true;
+    var editing = false;
 
-	var content = '<span class="passhashbutton hashbutton"/><span class="passhashbutton maskbutton"/>';
+    var content = '<span class="passhashbutton hashbutton"/><span class="passhashbutton maskbutton"/>';
 
-	var hashbutton;
-	var maskbutton;
+    var hashbutton;
+    var maskbutton;
 
-	function rehash () {
-		hash = generateHash (config, input);
-	}
+    function rehash () {
+        hash = generateHash (config, input);
+    }
 
-	function paintHash () {
-		if ("" != input) {
-			field.value = hash;
-		} else {
-			field.value = "";
-		}
-		field.style.backgroundColor = "#D1D1D1";
-		editing = false;
-	}
+    function paintHash () {
+        if ("" != input) {
+            field.value = hash;
+        } else {
+            field.value = "";
+        }
+        field.style.backgroundColor = "#D1D1D1";
+        editing = false;
+    }
 
-	function paintValue () {
-		field.value = input;
-		field.style.backgroundColor = backgroundStyle;
-		editing = true;
-	}
+    function paintValue () {
+        field.value = input;
+        field.style.backgroundColor = backgroundStyle;
+        editing = true;
+    }
 
-	function paintHashButton () {
-		if (hashing) {
-			hashbutton.innerHTML = "\"";
-			hashbutton.title = "Literal password (Ctrl + #)"
-		} else {
-			hashbutton.innerHTML = "#";
-			hashbutton.title = "Hash password (Ctrl + #)"
-		}
-	}
+    function paintHashButton () {
+        if (hashing) {
+            hashbutton.innerHTML = "\"";
+            hashbutton.title = "Literal password (Ctrl + #)"
+        } else {
+            hashbutton.innerHTML = "#";
+            hashbutton.title = "Hash password (Ctrl + #)"
+        }
+    }
 
-	function setFieldType () {
-		if (masking) {
-			field.type = "password";
-			if (null != maskbutton) {
-				maskbutton.innerHTML = "a";
-				maskbutton.title = "Show password (Ctrl + *)";
-			}
-		} else {
-			field.type = "text";
-			if (null != maskbutton) {
-				maskbutton.innerHTML = "*";
-				maskbutton.title = "Mask password (Ctrl + *)";
-			}
-		}
-	}
+    function setFieldType () {
+        if (masking) {
+            field.type = "password";
+            if (null != maskbutton) {
+                maskbutton.innerHTML = "a";
+                maskbutton.title = "Show password (Ctrl + *)";
+            }
+        } else {
+            field.type = "text";
+            if (null != maskbutton) {
+                maskbutton.innerHTML = "*";
+                maskbutton.title = "Mask password (Ctrl + *)";
+            }
+        }
+    }
 
-	function update () {
-		input = field.value;
-		rehash ();
-	}
+    function update () {
+        input = field.value;
+        rehash ();
+    }
 
-	function toggleMasking () {
-		masking = !masking;
-		setFieldType ();
-	}
+    function toggleMasking () {
+        masking = !masking;
+        setFieldType ();
+    }
 
-	function getSelection () {
-		var txt = null;
-		if (window.getSelection) {
-			txt = window.getSelection ();
-		}
-		else if (document.getSelection) {
-			txt = document.getSelection ();
-		} else if (document.selection) {
-			txt = document.selection.createRange ().text;
-		}
-		if ("" == txt) {
-			return null;
-		}
-		return txt;
-	}
+    function getSelection () {
+        var txt = null;
+        if (window.getSelection) {
+            txt = window.getSelection ();
+        }
+        else if (document.getSelection) {
+            txt = document.getSelection ();
+        } else if (document.selection) {
+            txt = document.selection.createRange ().text;
+        }
+        if ("" == txt) {
+            return null;
+        }
+        return txt;
+    }
 
-	function copy () {
-		update ();
-		paintHash ();
-		field.select ();
-	}
+    function copy () {
+        update ();
+        paintHash ();
+        field.select ();
+    }
 
-	function focusEvent () {
-		if (hashing) {
-			editing = true;
-			paintValue ();
-		}
-		hasFocus = true;
-	}
+    function focusEvent () {
+        if (hashing) {
+            editing = true;
+            paintValue ();
+        }
+        hasFocus = true;
+    }
 
-	function blurEvent () {
-		if (editing) {
-			update ();
-		}
-		if (hashing) {
-			paintHash ();
-		}
-		hasFocus = false;
-	}
+    function blurEvent () {
+        if (editing) {
+            update ();
+        }
+        if (hashing) {
+            paintHash ();
+        }
+        hasFocus = false;
+    }
 
-	function rehashEvent () {
-		rehash ();
-		if (hashing) {
-			paintHash ();
-		}
-	}
+    function rehashEvent () {
+        rehash ();
+        if (hashing) {
+            paintHash ();
+        }
+    }
 
-	function addFieldEventListeners () {
-		field.addEventListener ("focus", focusEvent);
-		field.addEventListener ("blur", blurEvent);
-		field.addEventListener ("change", update);
-		field.addEventListener ("rehash", rehashEvent);
-	}
+    function addFieldEventListeners () {
+        field.addEventListener ("focus", focusEvent);
+        field.addEventListener ("blur", blurEvent);
+        field.addEventListener ("change", update);
+        field.addEventListener ("rehash", rehashEvent);
+    }
 
-	function removeFieldEventListeners () {
-		field.removeEventListener ("focus", focusEvent);
-		field.removeEventListener ("blur", blurEvent);
-		field.removeEventListener ("change", update);
-		field.removeEventListener ("rehash", rehashEvent);
-	}
+    function removeFieldEventListeners () {
+        field.removeEventListener ("focus", focusEvent);
+        field.removeEventListener ("blur", blurEvent);
+        field.removeEventListener ("change", update);
+        field.removeEventListener ("rehash", rehashEvent);
+    }
 
-	field.addEventListener ("sethash", function () {
-		toggleHashing (false);
-	});
+    field.addEventListener ("sethash", function () {
+        toggleHashing (false);
+    });
 
-	function toggleHashing (save) {
-		hashing = !hashing;
-		if (hashing) {
-			update ();
-		}
-		if (null != hashbutton) {
-			paintHashButton ();
-		}
-		if (hashing) {
-			config.fields.add (field.id);
-			if (!hasFocus) {
-				rehash ();
-				paintHash ();
-			}
-			addFieldEventListeners ();
-		} else {
-			removeFieldEventListeners ();
-			config.fields.remove (field.id);
-			if (!hasFocus) {
-				paintValue ();
-			}
-		}
-		if (true == save) {
-			port.postMessage ({url: location.href, fields: fields, save: config});
-		}
-	}
+    function toggleHashing (save) {
+        hashing = !hashing;
+        if (hashing) {
+            update ();
+        }
+        if (null != hashbutton) {
+            paintHashButton ();
+        }
+        if (hashing) {
+            config.fields.add (field.id);
+            if (!hasFocus) {
+                rehash ();
+                paintHash ();
+            }
+            addFieldEventListeners ();
+        } else {
+            removeFieldEventListeners ();
+            config.fields.remove (field.id);
+            if (!hasFocus) {
+                paintValue ();
+            }
+        }
+        if (true == save) {
+            port.postMessage ({url: location.href, fields: fields, save: config});
+        }
+    }
 
-	$(field).qtip ({
-		content: {
-			text: content
-		},
-		position: { my: 'top right', at: 'bottom right' },
-		show: {
-			event: 'focus mouseenter',
-			solo: true
-		},
-		hide: {
-			fixed: true,
-			event: 'unfocus'
-		},
-		style: {
-			classes: 'ui-tooltip-light ui-tooltip-rounded'
-		},
-		events: {
-			visible: function (event, api) {
-				if (null != hashbutton) {
-					return;
-				}
+    $(field).qtip ({
+        content: {
+            text: content
+        },
+        position: { my: 'top right', at: 'bottom right' },
+        show: {
+            event: 'focus mouseenter',
+            solo: true
+        },
+        hide: {
+            fixed: true,
+            event: 'unfocus'
+        },
+        style: {
+            classes: 'ui-tooltip-light ui-tooltip-rounded'
+        },
+        events: {
+            visible: function (event, api) {
+                if (null != hashbutton) {
+                    return;
+                }
 
-				hashbutton = $(".hashbutton", api.elements.content).get (0);
-				maskbutton = $(".maskbutton", api.elements.content).get (0);
+                hashbutton = $(".hashbutton", api.elements.content).get (0);
+                maskbutton = $(".maskbutton", api.elements.content).get (0);
 
-				hashbutton.addEventListener ("click", function () {
-					toggleHashing (true);
-				});
+                hashbutton.addEventListener ("click", function () {
+                    toggleHashing (true);
+                });
 
-				maskbutton.addEventListener ("click", toggleMasking);
-				paintHashButton ();
-				setFieldType ();
-			}
-		}
-	});
+                maskbutton.addEventListener ("click", toggleMasking);
+                paintHashButton ();
+                setFieldType ();
+            }
+        }
+    });
 
-	var ctrlDown = false;
-	var shiftDown = false;
-	var altDown = false;
-	$(field).keyup (function (e) {
-		switch (e.which) {
-			case 16: shiftDown = false; break;
-			case 17: ctrlDown = false; break;
-			case 18: altDown = false; break;
-		};
-	});
+    var ctrlDown = false;
+    var shiftDown = false;
+    var altDown = false;
+    $(field).keyup (function (e) {
+        switch (e.which) {
+            case 16: shiftDown = false; break;
+            case 17: ctrlDown = false; break;
+            case 18: altDown = false; break;
+        };
+    });
 
-	var ctrl = 100000;
-	var alt = 10000;
-	var shift = 1000;
+    var ctrl = 100000;
+    var alt = 10000;
+    var shift = 1000;
 
-	$(field).keydown (function (e) {
-		switch (e.which) {
-			case 16: shiftDown = true; break;
-			case 17: ctrlDown = true; break;
-			case 18: altDown = true; break;
-			default:
-				// http://www.scottklarr.com/topic/126/how-to-create-ctrl-key-shortcuts-in-javascript/
-				if (shiftDown) e.which += shift;
-				if (altDown)   e.which += alt;
-				if (ctrlDown)  e.which += ctrl;
-				switch (e.which) {
-					case ctrl + shift + 51: // ctrl + #
-					case ctrl + 117: // ctrl + f6 
-						toggleHashing (true);
-					break;
-					case ctrl + shift + 56: // ctrl + *
-						toggleMasking ();
-					break;
-					case ctrl + 67: // ctrl + c
-						if (null == getSelection () && !masking) {
-							copy ();
-						}
-					break;
-					case 13:
-						update ();
-						if (hashing) {
-							paintHash ();
-						}
-						$(field).qtip ("hide");
-					break;
-				};
-		};
-	});
+    $(field).keydown (function (e) {
+        switch (e.which) {
+            case 16: shiftDown = true; break;
+            case 17: ctrlDown = true; break;
+            case 18: altDown = true; break;
+            default:
+                // http://www.scottklarr.com/topic/126/how-to-create-ctrl-key-shortcuts-in-javascript/
+                if (shiftDown) e.which += shift;
+                if (altDown)   e.which += alt;
+                if (ctrlDown)  e.which += ctrl;
+                switch (e.which) {
+                    case ctrl + shift + 51: // ctrl + #
+                    case ctrl + 117: // ctrl + f6 
+                        toggleHashing (true);
+                    break;
+                    case ctrl + shift + 56: // ctrl + *
+                        toggleMasking ();
+                    break;
+                    case ctrl + 67: // ctrl + c
+                        if (null == getSelection () && !masking) {
+                            copy ();
+                        }
+                    break;
+                    case 13:
+                        update ();
+                        if (hashing) {
+                            paintHash ();
+                        }
+                        $(field).qtip ("hide");
+                    break;
+                };
+        };
+    });
 
-	setFieldType ();
-	return true;
+    setFieldType ();
+    return true;
 }
 
 $("input[type=password]").each (function (index) {
-	bind (this);
+    bind (this);
 });
 
 function addEventListeners () {
-	document.addEventListener ("DOMNodeInserted", onNodeInserted, false);
-	document.addEventListener ("DOMNodeInsertedIntoDocument", onNodeInserted, false);
-	document.addEventListener ("DOMSubtreeModified", onNodeInserted, false);
+    document.addEventListener ("DOMNodeInserted", onNodeInserted, false);
+    document.addEventListener ("DOMNodeInsertedIntoDocument", onNodeInserted, false);
+    document.addEventListener ("DOMSubtreeModified", onNodeInserted, false);
 }
 
 function removeEventListeners () {
-	document.removeEventListener ("DOMNodeInserted", onNodeInserted, false);
-	document.removeEventListener ("DOMNodeInsertedIntoDocument", onNodeInserted, false);
-	document.removeEventListener ("DOMSubtreeModified", onNodeInserted, false);
+    document.removeEventListener ("DOMNodeInserted", onNodeInserted, false);
+    document.removeEventListener ("DOMNodeInsertedIntoDocument", onNodeInserted, false);
+    document.removeEventListener ("DOMSubtreeModified", onNodeInserted, false);
 }
 
 var setHashEvt = document.createEvent ("HTMLEvents");
@@ -325,33 +325,33 @@ var rehashEvt = document.createEvent ("HTMLEvents");
 rehashEvt.initEvent ('rehash', true, true);
 
 function onNodeInserted (evt) {
-	removeEventListeners ();
-	$("input[type=password]", evt.srcElement).each (function (index) {
-		if (bind (this) && this.id in config.fields) {
-			this.dispatchEvent (setHashEvt);
-		}
-	});
-	addEventListeners ();
+    removeEventListeners ();
+    $("input[type=password]", evt.srcElement).each (function (index) {
+        if (bind (this) && this.id in config.fields) {
+            this.dispatchEvent (setHashEvt);
+        }
+    });
+    addEventListeners ();
 }
 
 port.onMessage.addListener (function (msg) {
-	if (null != msg.update) {
-		if (debug) console.log ("Config updated " + JSON.stringify (msg.update));
-		config = msg.update;
-		config.fields = toSet (config.fields);
-		for (var i = 0; i < fields.length; ++i) {
-			fields[i].dispatchEvent (rehashEvt);
-		}
-	}
-	if (null != msg.init) {
-		for (var i = 0; i < fields.length; ++i) {
-			if (fields[i].id in config.fields) {
-				// Hashing for this field was persisted but it is not enabled yet
-				fields[i].dispatchEvent (setHashEvt);
-			}
-		}
-		addEventListeners ();
-	}
+    if (null != msg.update) {
+        if (debug) console.log ("Config updated " + JSON.stringify (msg.update));
+        config = msg.update;
+        config.fields = toSet (config.fields);
+        for (var i = 0; i < fields.length; ++i) {
+            fields[i].dispatchEvent (rehashEvt);
+        }
+    }
+    if (null != msg.init) {
+        for (var i = 0; i < fields.length; ++i) {
+            if (fields[i].id in config.fields) {
+                // Hashing for this field was persisted but it is not enabled yet
+                fields[i].dispatchEvent (setHashEvt);
+            }
+        }
+        addEventListeners ();
+    }
 });
 
 port.postMessage ({init: true, url:location.href, fields:fields});

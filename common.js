@@ -36,11 +36,11 @@
 var debug = false;
 
 String.prototype.startsWith = function (str) {
-	return (this.match ("^" + str) == str);
+    return (this.match ("^" + str) == str);
 }
 
 String.prototype.substringAfter = function (str) {
-	return (this.substring (this.indexOf (str) + str.length));
+    return (this.substring (this.indexOf (str) + str.length));
 }
 
 var Set = function () {}
@@ -48,86 +48,86 @@ Set.prototype.add = function (o) { this[o] = true; }
 Set.prototype.remove = function (o) { delete this[o]; }
 
 function toSet (array) {
-	var s = new Set ();
-	for (var i = 0; i < array.length; ++i) {
-		s.add (array[i]);
-	}
-	return s;
+    var s = new Set ();
+    for (var i = 0; i < array.length; ++i) {
+        s.add (array[i]);
+    }
+    return s;
 }
 
 function toArray (s) {
-	return Object.keys (s);
+    return Object.keys (s);
 }
 
 var default_length = 8;
 var default_strength = 2;
 
 function generateGuid () {
-	return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace (/[xy]/g, function(c) {
-		var r = Math.random ()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
-		return v.toString (16);
-	}).toUpperCase ();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace (/[xy]/g, function(c) {
+        var r = Math.random ()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+        return v.toString (16);
+    }).toUpperCase ();
 }
 
 function generateHash (config, input) {
-	var tag = config.tag;
+    var tag = config.tag;
 
-	var seed = config.policy.seed;
-	if (!seed) {
-		var seedRef = config.policy.seedRef;
-		if (seedRef) {
-			seed = config.secrets.seeds[seedRef];
-		}
-	}
-	if (null != seed) {
-		tag = PassHashCommon.generateHashWord (
-			seed,
-			tag,
-			24,
-			true, // require digits
-			true, // require punctuation
-			true, // require mixed case
-			false, // no special characters
-			false // only digits
-		);
-	}
+    var seed = config.policy.seed;
+    if (!seed) {
+        var seedRef = config.policy.seedRef;
+        if (seedRef) {
+            seed = config.secrets.seeds[seedRef];
+        }
+    }
+    if (null != seed) {
+        tag = PassHashCommon.generateHashWord (
+            seed,
+            tag,
+            24,
+            true, // require digits
+            true, // require punctuation
+            true, // require mixed case
+            false, // no special characters
+            false // only digits
+        );
+    }
 
-	return PassHashCommon.generateHashWord (
-		tag,
-		input,
-		config.policy.length,
-		true, // require digits
-		config.policy.strength > 1, // require punctuation
-		true, // require mixed case
-		config.policy.strength < 2, // no special characters
-		config.policy.strength == 0 // only digits
-	);
+    return PassHashCommon.generateHashWord (
+        tag,
+        input,
+        config.policy.length,
+        true, // require digits
+        config.policy.strength > 1, // require punctuation
+        true, // require mixed case
+        config.policy.strength < 2, // no special characters
+        config.policy.strength == 0 // only digits
+    );
 }
 
 function bump (tag) {
-	var re = new RegExp ("^([^:]+?)(:([0-9]+))?$");
-	var matcher = re.exec (tag);
-	var bump = 1;
-	if (null != matcher[3]) {
-		tag = matcher[1];
-		bump += parseInt (matcher[3]);
-	}
-	return tag + ":" + bump;
+    var re = new RegExp ("^([^:]+?)(:([0-9]+))?$");
+    var matcher = re.exec (tag);
+    var bump = 1;
+    if (null != matcher[3]) {
+        tag = matcher[1];
+        bump += parseInt (matcher[3]);
+    }
+    return tag + ":" + bump;
 }
 
 function grepUrl (url) {
-	//^(?:[^.]+\.){0,1}((?:[^.]+\.)*(?:[^.]+))\.(?:[^.]{2,15})$
-	//http://www.regexplanet.com/simple/index.html
-	var reg = new RegExp ("^https?://(?:([^:\\./ ]+?)|([0-9]{1,3}(?:\\.[0-9]{1,3}){3})|(?:[^:./ ]+\\.){0,1}((?:[^:./ ]+\\.)*(?:[^:. /]+))\\.(?:[^:. /]{2,15}))(?::\\d+)?/.*$");
-	var m = reg.exec (url);
-	try {
-		for (var i = 0; i < 3; ++i) {
-			if (null != m[i+1]) {
-				return m[i+1];
-			}
-		}
-		throw "unmatched";
-	} catch (e) {
-		return "chrome";
-	}
+    //^(?:[^.]+\.){0,1}((?:[^.]+\.)*(?:[^.]+))\.(?:[^.]{2,15})$
+    //http://www.regexplanet.com/simple/index.html
+    var reg = new RegExp ("^https?://(?:([^:\\./ ]+?)|([0-9]{1,3}(?:\\.[0-9]{1,3}){3})|(?:[^:./ ]+\\.){0,1}((?:[^:./ ]+\\.)*(?:[^:. /]+))\\.(?:[^:. /]{2,15}))(?::\\d+)?/.*$");
+    var m = reg.exec (url);
+    try {
+        for (var i = 0; i < 3; ++i) {
+            if (null != m[i+1]) {
+                return m[i+1];
+            }
+        }
+        throw "unmatched";
+    } catch (e) {
+        return "chrome";
+    }
 }
