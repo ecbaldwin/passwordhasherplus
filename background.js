@@ -82,9 +82,12 @@ addRules = function() {
 	matchPageWithPasswordField = new chrome.declarativeContent.PageStateMatcher({
 		css: ["input[type='password']"]
 	});
+	matchPageWithPasswordFortifier = new chrome.declarativeContent.PageStateMatcher({
+		css: [".passwordfortifier"]
+	});
 	actionShowPage = new chrome.declarativeContent.ShowPageAction();
 	rules = [{
-		conditions: [ matchPageWithPasswordField ]
+		conditions: [ matchPageWithPasswordField, matchPageWithPasswordFortifier ]
 		, actions: [ actionShowPage ]
 	}];
 	chrome.declarativeContent.onPageChanged.addRules(rules);

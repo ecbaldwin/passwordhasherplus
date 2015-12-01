@@ -42,6 +42,7 @@ var fields = new Array ();
 
 function bind (f) {
 	var field = f;
+	$(field).addClass("passwordfortifier")
 	if ("" == field.id) {
 		field.id = "passhash_" + id++;
 	}
