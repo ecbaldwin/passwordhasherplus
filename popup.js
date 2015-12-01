@@ -53,13 +53,3 @@ $('#bump').click (function () {
 $('#tag').change (writeModel);
 $('#length').change (writeModel);
 $('#strength').change (writeModel);
-
-$(document).ready(function() {
-    $('#link-options').click(function() {
-        chrome.tabs.create({url:'chrome-extension://'+location.hostname+'/options.html'})
-    });    
-    $('#link-standalone').click(function() {
-        chrome.tabs.create({url:'chrome-extension://'+location.hostname+'/passhashplus.html'})
-    });
-})
-
