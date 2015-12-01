@@ -3,11 +3,9 @@ var config;
 
 function writeModel () {
     config.tag = $('#tag').val ();
-    config.policy.seedRef = hex_hmac_sha1(
-        config.options.salt,
-        config.secrets.privateSeed).substring(0,7);
     config.policy.length = $('#length').val ();
     config.policy.strength = $('#strength').val ();
+    config.policy.seedRef = $('#secret').val ();
     chrome.extension.getBackgroundPage ().saveConfig (url, config);
 }
 window.onunload = writeModel;
@@ -18,6 +16,20 @@ function readModel () {
         $('#tag').autocomplete ({ source: tags });
         $('#length').val (config.policy.length);
         $('#strength').val (config.policy.strength);
+        $('#secret').empty()
+        for(var key in config.secrets.seeds) {
+            var latest = "";
+            if(config.secrets.seeds[key] === config.secrets.privateSeed) {
+                latest = " (latest)";
+            }
+            $('#secret').append(
+                '<option value="' + key + '">' + key + latest + '</option>');
+        }
+        if(! config.policy.seedRef in config.secrets.seeds) {
+            $('#secret').append(
+                '<option value="' + config.policy.seedRef + '">' + config.policy.seedRef + '</option>');
+        }
+        $('#secret').val (config.policy.seedRef);
         if (false == config.options.backedUp) {
             $('div#compatmodeheader').html ("<b>Warning:</b>");
             $('div#compatmode').text ("You have not yet indicated that you have backed up your private key. Please do so on the Options page.");
@@ -42,3 +54,4 @@ $('#bump').click (function () {
 $('#tag').change (writeModel);
 $('#length').change (writeModel);
 $('#strength').change (writeModel);
+$('#secret').change (writeModel);
