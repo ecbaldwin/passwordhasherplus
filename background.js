@@ -52,6 +52,7 @@ storage.migrate (function () {
 
 chrome.extension.onConnect.addListener (function (port) {
 	console.assert (port.name == "passhash");
+	var port_id = port.sender.id + "__" + port.sender.frameId;
 	port.onMessage.addListener (function (msg) {
 		if (msg.fields.length === 0) {
 			return;
@@ -60,7 +61,7 @@ chrome.extension.onConnect.addListener (function (port) {
 			var url = grepUrl (msg.url);
 			storage.loadConfig (url, function(config) {
 			port.passhashUrl = url;
-			ports[port.portId_] = port;
+			ports[port_id] = port;
 			port.postMessage ({ init: true, update: config });
 			});
 		} else if (null != msg.save) {
@@ -70,8 +71,8 @@ chrome.extension.onConnect.addListener (function (port) {
 	});
 
 	port.onDisconnect.addListener (function (port) {
-		if (null != port.portId_) {
-			delete ports[port.portId_];
+		if (port_id in ports) {
+			delete ports[port_id];
 		}
 	});
 });
