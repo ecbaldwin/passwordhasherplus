@@ -318,25 +318,28 @@ storage.loadOptions = function (callback) {
 
 storage.saveConfig = function (url, config, callback) {
     if (debug) console.log ("Saving " + url + " " + JSON.stringify (config));
-    config.fields = toArray (config.fields);
+    copy = {};
+    for (var attr in config) {
+        if (config.hasOwnProperty(attr)) {
+            copy[attr] = config[attr];
+        }
+    }
+    copy.fields = toArray (copy.fields);
 
-    var options = config.options;
-    var secrets = config.secrets;
-    var policy = config.policy;
-    delete config.policy;
-    delete config.options;
-    delete config.secrets;
+    var options = copy.options;
+    var secrets = copy.secrets;
+    var policy = copy.policy;
+    delete copy.policy;
+    delete copy.options;
+    delete copy.secrets;
 
     var url = "url:" + url;
-    config.length = policy.length;
-    config.strength = policy.strength;
-    config.seedRef = policy.seedRef;
+    copy.length = policy.length;
+    copy.strength = policy.strength;
+    copy.seedRef = policy.seedRef;
     items = {}
-    items[url] = config;
+    items[url] = copy;
     this.setObjects(items, function() {
-        config.policy = policy;
-        config.options = options;
-        config.secrets = secrets;
         if (callback) callback();
     });
 }
