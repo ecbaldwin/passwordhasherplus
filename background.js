@@ -57,14 +57,14 @@ storage.migrate (function () {
                 return;
             }
             if (null != msg.init) {
-                var url = grepUrl (msg.url);
+                var url = grepUrl (port.sender.url);
                 storage.loadConfig (url, function(config) {
                     port.passhashUrl = url;
                     ports[port_id] = port;
                     port.postMessage ({ init: true, update: config });
                 });
             } else if (null != msg.save) {
-                var url = grepUrl (msg.url);
+                var url = grepUrl (port.sender.url);
                 saveConfig (url, msg.save, function() {});
             }
         });

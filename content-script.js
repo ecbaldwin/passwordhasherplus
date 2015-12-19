@@ -210,7 +210,7 @@ function bind (f) {
             }
         }
         if (true == save) {
-            port.postMessage ({url: location.href, fields: fields, save: config});
+            port.postMessage ({fields: fields, save: config});
         }
     }
 
@@ -355,4 +355,4 @@ port.onMessage.addListener (function (msg) {
     }
 });
 
-port.postMessage ({init: true, url:location.href, fields:fields});
+port.postMessage ({init: true, fields:fields});
