@@ -189,6 +189,7 @@ function bind (f) {
     function toggleHashing (save) {
         hashing = !hashing;
         if (hashing) {
+            $(field).focus();
             update ();
         }
         if (null != hashbutton) {
