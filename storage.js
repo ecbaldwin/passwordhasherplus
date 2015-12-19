@@ -357,18 +357,6 @@ storage.loadTags = function (callback) {
     });
 }
 
-storage.isTagReferenced = function (items, tag) {
-    for (var key in items) {
-        if (key.startsWith ("url:")) {
-            var config = items[key];
-            if (config.tag == tag) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
 storage.loadConfig = function (url, callback) {
     var self = this;
     self.getObject ("url:" + url, function(config) {
