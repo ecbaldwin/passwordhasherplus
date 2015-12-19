@@ -48,6 +48,15 @@ function saveConfig (url, config, callback) {
     });
 }
 
+function saveFields (url, field_config, callback) {
+    storage.loadConfig (url, function(config) {
+        config.fields = field_config;
+        storage.saveConfig (url, config, function() {
+            refreshTabs (callback);
+        });
+    });
+}
+
 storage.migrate (function () {
     chrome.extension.onConnect.addListener (function (port) {
         console.assert (port.name == "passhash");
@@ -63,13 +72,13 @@ storage.migrate (function () {
                     ports[port_id] = port;
                     port.postMessage ({ init: true, update: config });
                 });
-            } else if (null != msg.save) {
+            } else if (msg.field_config) {
                 var url = grepUrl (port.sender.url);
-                saveConfig (url, msg.save, function() {});
+                saveFields (url, msg.field_config);
             }
         });
 
-        port.onDisconnect.addListener (function (port) {
+        port.onDisconnect.addListener (function () {
             if (port_id in ports) {
                 delete ports[port_id];
             }

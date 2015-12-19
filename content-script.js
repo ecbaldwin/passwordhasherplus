@@ -210,7 +210,7 @@ function bind (f) {
             }
         }
         if (true == save) {
-            port.postMessage ({fields: fields, save: config});
+            port.postMessage ({fields: fields, field_config: config.fields});
         }
     }
 
