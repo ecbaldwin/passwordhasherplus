@@ -66,7 +66,7 @@ function bind (f) {
     var maskbutton;
 
     function rehash () {
-        port.postMessage ({generate: true, input: input});
+        hash = generateHash (config, input);
     }
 
     function paintHash () {
@@ -183,41 +183,11 @@ function bind (f) {
     }
 
     field.addEventListener ("sethash", function () {
-        hashing = true;
-        updateHash ();
+        toggleHashing (false);
     });
 
-    field.addEventListener ("newhash", function (e) {
-        hash = e.detail;
-        newHash ();
-    });
-
-    function toggleHashing () {
+    function toggleHashing (save) {
         hashing = !hashing;
-        updateHash();
-        port.postMessage ({fields: fields, field_config: config.fields});
-    }
-
-    function newHash () {
-        if (null != hashbutton) {
-            paintHashButton ();
-        }
-        if (hashing) {
-            config.fields.add (field.id);
-            if (!hasFocus) {
-                paintHash ();
-            }
-            addFieldEventListeners ();
-        } else {
-            removeFieldEventListeners ();
-            config.fields.remove (field.id);
-            if (!hasFocus) {
-                paintValue ();
-            }
-        }
-    }
-
-    function updateHash () {
         if (hashing) {
             $(field).focus();
             update ();
@@ -238,6 +208,9 @@ function bind (f) {
             if (!hasFocus) {
                 paintValue ();
             }
+        }
+        if (true == save) {
+            port.postMessage ({fields: fields, field_config: config.fields});
         }
     }
 
@@ -363,14 +336,15 @@ function onNodeInserted (evt) {
 }
 
 port.onMessage.addListener (function (msg) {
-    if (msg.fields) {
-        config = {};
-        config.fields = toSet (msg.fields);
+    if (null != msg.update) {
+        if (debug) console.log ("Config updated " + JSON.stringify (msg.update));
+        config = msg.update;
+        config.fields = toSet (config.fields);
         for (var i = 0; i < fields.length; ++i) {
             fields[i].dispatchEvent (rehashEvt);
         }
     }
-    if (msg.init) {
+    if (null != msg.init) {
         for (var i = 0; i < fields.length; ++i) {
             if (fields[i].id in config.fields) {
                 // Hashing for this field was persisted but it is not enabled yet
@@ -378,15 +352,6 @@ port.onMessage.addListener (function (msg) {
             }
         }
         addEventListeners ();
-    }
-    if (msg.newhash) {
-        for (var i = 0; i < fields.length; ++i) {
-            if (fields[i].id in config.fields) {
-                // Hashing for this field was persisted but it is not enabled yet
-                var e = new CustomEvent('newhash', {'detail': msg.hash});
-                fields[i].dispatchEvent (e);
-            }
-        }
     }
 });
 
