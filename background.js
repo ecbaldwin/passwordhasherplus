@@ -7,7 +7,7 @@ function refreshTabs (callback) {
         var port = ports[key];
         if (debug) console.log ("Loading " + port.passhashUrl + " for " + key);
         loadConfig (port.passhashUrl, function(config) {
-            port.postMessage ({ update: config });
+            port.postMessage ({ fields: config.fields });
         });
     }
     for (var i = 0; i < keys.length; ++i) {
@@ -62,6 +62,14 @@ storage.migrate (function () {
         console.assert (port.name == "passhash");
         var port_id = port.sender.id + "__" + port.sender.frameId;
         port.onMessage.addListener (function (msg) {
+            if (msg.generate) {
+                var url = grepUrl (port.sender.url);
+                storage.loadConfig (url, function(config) {
+                    hash = generateHash (config, msg.input);
+                    port.postMessage ({ newhash: true, hash: hash });
+                });
+                return;
+            }
             if (msg.fields.length === 0) {
                 return;
             }
@@ -70,7 +78,7 @@ storage.migrate (function () {
                 storage.loadConfig (url, function(config) {
                     port.passhashUrl = url;
                     ports[port_id] = port;
-                    port.postMessage ({ init: true, update: config });
+                    port.postMessage ({ init: true, fields: config.fields });
                 });
             } else if (msg.field_config) {
                 var url = grepUrl (port.sender.url);
